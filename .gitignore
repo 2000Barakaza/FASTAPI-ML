@@ -20,7 +20,7 @@ venv/
 Thumbs.db
 
 # ML artifacts
-model.pkl
+
 *.joblib
 
 # Data files (IMPORTANT)
@@ -29,3 +29,8 @@ model.pkl
 
 # Jupyter
 .ipynb_checkpoints/
+
+
+
+
+
