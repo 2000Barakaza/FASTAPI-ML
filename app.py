@@ -1,63 +1,103 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, computed_field
 from schema.user_input import UserInput
 from schema.prediction_response import PredictionResponse
-from model.predict import predict_output, model, MODEL_VERSION
-from typing import Literal, Annotated
+from model.predict import predict_output, MODEL_VERSION
+
 import os
 import pickle
 import pandas as pd
-import numpy as np
 
-# Load the ML model
-#import pickle
-# Load the ML model (with error handling)
-model_path = os.path.join(os.path.dirname(__file__), 'model.pkl')
+
+# =========================
+# App initialization
+# =========================
+app = FastAPI(title="Insurance Premium Prediction API")
+
+
+# =========================
+# Load ML model (ONCE)
+# =========================
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
+
 try:
-    with open(model_path, 'rb') as f:
+    with open(MODEL_PATH, "rb") as f:
         model = pickle.load(f)
 except FileNotFoundError:
-    raise FileNotFoundError(f"Model file '{model_path}' not found. Run the training notebook first to generate it.")
+    raise RuntimeError(
+        f"Model file not found at {MODEL_PATH}. Train the model first."
+    )
 
-app = FastAPI()
+
+# =========================
+# Utility functions
+# =========================
+def calculate_bmi(weight_kg: float, height_cm: float) -> float:
+    height_m = height_cm / 100
+    return round(weight_kg / (height_m ** 2), 2)
 
 
-# human readable       
-@app.get('/')
+def age_to_group(age: int) -> str:
+    if age < 18:
+        return "child"
+    elif age < 35:
+        return "young_adult"
+    elif age < 60:
+        return "adult"
+    return "senior"
+
+
+# =========================
+# Routes
+# =========================
+
+# Human-readable
+@app.get("/")
 def home():
-    return {'message':'Insurance Premium Prediction API'}
+    return {"message": "Insurance Premium Prediction API"}
 
-# machine readable
-@app.get('/health')
+
+# Machine-readable
+@app.get("/health")
 def health_check():
     return {
-        'status': 'OK',
-        'version': MODEL_VERSION,
-        'model_loaded': model is not None
+        "status": "OK",
+        "version": MODEL_VERSION,
+        "model_loaded": model is not None,
     }
 
-@app.post('/predict', response_model=PredictionResponse)
+
+@app.post("/predict", response_model=PredictionResponse)
 def predict_premium(data: UserInput):
 
+    # =========================
+    # Feature engineering
+    # =========================
     user_input = {
-        'bmi': data.bmi,
-        'age_group': data.age_group,
-        'lifestyle_risk': data.lifestyle_risk,
-        'city_tier': data.city_tier,
-        'income_lpa': data.income_lpa,
-        'occupation': data.occupation
+        # engineered features
+        "bmi": calculate_bmi(data.weight_kg, data.height_cm),
+        "age_group": age_to_group(data.age),
+        "lifestyle_risk": "medium",      # placeholder (logic later)
+        "city_tier": "tier_1",            # placeholder
+        "income_lpa": 8.5,                # placeholder
+        "occupation": "office_worker",    # placeholder
+
+        # raw features
+        "age": data.age,
+        "gender": data.gender,
+        "height_cm": data.height_cm,
+        "weight_kg": data.weight_kg,
+        "city": data.city,
+        "state": data.state,
+        "condition": data.condition,
     }
 
     try:
-
         prediction = predict_output(user_input)
+        return {"prediction": prediction}
 
-        return JSONResponse(status_code=200, content={'response': prediction})
-    
     except Exception as e:
-
-        return JSONResponse(status_code=500, content=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -68,9 +108,5 @@ def predict_premium(data: UserInput):
 #Asthma                          1
 #Low back pain                   1
 #Generalized anxiety disorder
-
-
-
-
 
 
