@@ -73,6 +73,8 @@ def predict_premium(data: UserInput):
     # =========================
     # Feature engineering
     # =========================
+
+
     user_input = {
         # engineered features
         "bmi": calculate_bmi(data.weight_kg, data.height_cm),
@@ -81,8 +83,9 @@ def predict_premium(data: UserInput):
         "city_tier": "tier_1",            # placeholder
         "income_lpa": 8.5,                # placeholder
         "occupation": "office_worker",    # placeholder
-
         # raw features
+
+
         "age": data.age,
         "gender": data.gender,
         "height_cm": data.height_cm,
@@ -93,12 +96,21 @@ def predict_premium(data: UserInput):
     }
 
     try:
-        prediction = predict_output(user_input)
-        return {"prediction": prediction}
+        # 🔥 THIS WAS MISSING
+        predicted_category, confidence, class_probabilities = predict_output(
+            model, user_input
+        )
+
+        return {
+            "predicted_category": predicted_category,
+            "confidence": float(confidence),
+            "class_probabilities": {
+                k: float(v) for k, v in class_probabilities.items()
+            },
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 
@@ -108,5 +120,11 @@ def predict_premium(data: UserInput):
 #Asthma                          1
 #Low back pain                   1
 #Generalized anxiety disorder
+
+
+
+
+
+
 
 

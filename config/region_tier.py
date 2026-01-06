@@ -1,5 +1,5 @@
-tier_1_cities = ["Dar-es-salaam", "Morogoro", "Dodoma", "Tabora", "Mwanza", "Kigoma", "Mbeya"]
-tier_2_cities = [
+regions = ["Dar-es-salaam", "Morogoro", "Dodoma", "Tabora", "Mwanza", "Kigoma", "Mbeya"]
+areas = [
     "Mbagala", "Tandika", "Mtongani", "Aziz Allye", "Msasani", "Kawe", "Magomeni", "Pugu",
     "Buguruni", "Ilala", "Kariakoo", "Upanga", "Kivukoni", "Kigamboni", "Kurasini", "Chang’ombe", "Temeke",
     "Mtoni", "Mikocheni", "Sinza", "Kinondoni", "Oysterbay", "Masaki", "Kijitonyama", "Mwananyamala",
@@ -8,5 +8,12 @@ tier_2_cities = [
     "Segerea", "Ukonga", "Airport Area", "Tegeta", "Bunju", "Mbezi Beach", "Mbezi Louis"
 
 ]
+
+
+
+
+
+
+
 
 

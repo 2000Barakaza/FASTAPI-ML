@@ -1,45 +1,107 @@
 from fastapi import FastAPI, Path, HTTPException, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import Annotated, Literal, Optional
+from config.region_tier import regions, areas
 import json
 
 app = FastAPI()
 
 class Patient(BaseModel):
     id: Annotated[str, Field(..., description='ID of the patient', examples=['P001'])]
-    name: Annotated[str, Field(..., description='Name of the patient')]
-    city: Annotated[str, Field(..., description='City where the patient is living')]
-    age: Annotated[int, Field(..., gt=0, lt=120, description='Age of the patient')]
-    gender: Annotated[Literal['male', 'female', 'others'], Field(..., description='Gender of the patient')]
-    height: Annotated[float, Field(..., gt=0, description='Height of the patient in mtrs')]
-    weight: Annotated[float, Field(..., gt=0, description='Weight of the patient in kgs')]
+    age: Annotated[int, Field(gt=0, lt=120, description="Age of the user")]
+    gender: Annotated[str, Field(description="Gender of the user")]
+    height_cm: Annotated[float, Field(gt=0, lt=250, description="Height in cm")]
+    weight_kg: Annotated[float, Field(gt=0, description="Weight in kg")]
+    regions: Annotated[str, Field(description="Regions")]
+    areas: Annotated[str, Field(description="Areas")]
+    condition: Annotated[str, Field(description="Medical condition")]
+    income_lpa: Annotated[float, Field(gt=0, description="Income in LPA")]
+    smoker: Annotated[bool, Field(description="Is smoker")]
+    occupation: Annotated[
+        Literal[
+            "retired",
+            "freelancer",
+            "student",
+            "government_job",
+            "business_owner",
+            "unemployed",
+            "private_job",
+        ],
+        Field(description="Occupation"),
+    ]
 
+    # ======================
+    # Validators
+    # ======================
+    @field_validator("regions")
+    def normalize_regions(cls, v: str) -> str:
+        return v.strip().title()
+
+    @field_validator("areas")
+    def normalize_areas(cls, v: str) -> str:
+        return v.strip().title()
+
+    # ======================
+    # Computed fields
+    # ======================
     @computed_field
     @property
     def bmi(self) -> float:
-        bmi = round(self.weight / (self.height ** 2), 2)
-        return bmi
-    
+        height_m = self.height_cm / 100
+        return round(self.weight_kg / (height_m ** 2), 2)
+
     @computed_field
     @property
-    def verdict(self) -> str:
-        if self.bmi < 18.5:
-            return 'Underweight'
-        elif self.bmi < 25:
-            return 'Normal'
-        elif self.bmi < 30:
-            return 'Overweight'  # Fixed from duplicate 'Normal'
-        else:
-            return 'Obese'
-       
+    def lifestyle_risk(self) -> str:
+        if self.smoker and self.bmi > 30:
+            return "high"
+        elif self.smoker or self.bmi > 27:
+            return "medium"
+        return "low"
+
+    @computed_field
+    @property
+    def age_group(self) -> str:
+        if self.age < 25:
+            return "young"
+        elif self.age < 45:
+            return "adult"
+        elif self.age < 60:
+            return "middle_aged"
+        return "senior"
+
+    @computed_field
+    @property
+    def region_tier(self) -> int:
+        if self.regions in regions:
+            return 1
+        elif self.areas in areas:
+            return 2
+        return 3
+
 class PatientUpdate(BaseModel):
-    name: Annotated[Optional[str], Field(default=None)]
-    city: Annotated[Optional[str], Field(default=None)]
-    age: Annotated[Optional[int], Field(default=None, gt=0)]
-    gender: Annotated[Optional[Literal['male', 'female', 'others']], Field(default=None)]  # Added 'others'
-    height: Annotated[Optional[float], Field(default=None, gt=0)]
-    weight: Annotated[Optional[float], Field(default=None, gt=0)]
+    age: Annotated[Optional[int], Field(default=None, gt=0, lt=120)]
+    gender: Annotated[Optional[str], Field(default=None)]
+    height_cm: Annotated[Optional[float], Field(default=None, gt=0, lt=250)]
+    weight_kg: Annotated[Optional[float], Field(default=None, gt=0)]
+    regions: Annotated[Optional[str], Field(default=None)]
+    areas: Annotated[Optional[str], Field(default=None)]
+    condition: Annotated[Optional[str], Field(default=None)]
+    income_lpa: Annotated[Optional[float], Field(default=None, gt=0)]
+    smoker: Annotated[Optional[bool], Field(default=None)]
+    occupation: Annotated[
+        Optional[Literal[
+            "retired",
+            "freelancer",
+            "student",
+            "government_job",
+            "business_owner",
+            "unemployed",
+            "private_job",
+        ]],
+        Field(default=None),
+    ]
 
 def load_data():
     try:
@@ -49,12 +111,12 @@ def load_data():
             return {p["id"]: p for p in data}
         return data
     except FileNotFoundError:
-        return {}  # Handle missing file gracefully
+        return {}
 
 def save_data(data):
     with open('patients.json', 'w') as f:
         json.dump(data, f)
-       
+
 @app.get("/")
 def hello():
     return {'message':'Patient Management System API'}
@@ -70,25 +132,22 @@ def view():
 
 @app.get('/patient/{id}')
 def view_patient(id: str = Path(..., description='ID of the patient in the DB', examples=['P001'])):
-    # load all the patients
     data = load_data()
     if id in data:
         return data[id]
     raise HTTPException(status_code=404, detail='Patient not found')
 
 @app.get('/sort')
-def sort_patients(sort_by: str = Query(..., description='Sort on the basis of height, weight or bmi'), order: str = Query('asc', description='sort in asc or desc order')):
-    valid_fields = ['height', 'weight', 'bmi']
+def sort_patients(sort_by: str = Query(..., description='Sort on the basis of height_cm, weight_kg or bmi'), order: str = Query('asc', description='sort in asc or desc order')):
+    valid_fields = ['height_cm', 'weight_kg', 'bmi']
     if sort_by not in valid_fields:
         raise HTTPException(status_code=400, detail=f'Invalid field select from {valid_fields}')
-    
     if order not in ['asc', 'desc']:
         raise HTTPException(status_code=400, detail='Invalid order select between asc and desc')
-    
     data = load_data()
-    sort_order = True if order=='desc' else False
+    sort_order = True if order == 'desc' else False
     sorted_data = sorted(
-        data.values(),  # Fixed: Use data.values() to get list of patient dicts
+        data.values(),
         key=lambda x: x.get(sort_by, 0),
         reverse=sort_order
     )
@@ -96,14 +155,10 @@ def sort_patients(sort_by: str = Query(..., description='Sort on the basis of he
 
 @app.post('/create')
 def create_patient(patient: Patient):
-    # load existing data
     data = load_data()
-    # check if the patient already exists
     if patient.id in data:
         raise HTTPException(status_code=400, detail='Patient already exists')
-    # new patient add to the database
     data[patient.id] = patient.model_dump(exclude=['id'])
-    # save into the json file
     save_data(data)
     return JSONResponse(status_code=201, content={'message':'patient created successfully'})
 
@@ -112,42 +167,25 @@ def update_patient(patient_id: str, patient_update: PatientUpdate):
     data = load_data()
     if patient_id not in data:
         raise HTTPException(status_code=404, detail='Patient not found')
-    
     existing_patient_info = data[patient_id]
     updated_patient_info = patient_update.model_dump(exclude_unset=True)
     for key, value in updated_patient_info.items():
         existing_patient_info[key] = value
-    #existing_patient_info -> pydantic object -> updated bmi + verdict
     existing_patient_info['id'] = patient_id
-    patient_pydandic_obj = Patient(**existing_patient_info)
-    #-> pydantic object -> dict
-    existing_patient_info = patient_pydandic_obj.model_dump(exclude=['id'])  # Fixed typo: exclude=['id']
-    # add this dict to data
+    patient_pydantic_obj = Patient(**existing_patient_info)
+    existing_patient_info = patient_pydantic_obj.model_dump(exclude=['id'])
     data[patient_id] = existing_patient_info
-    # save data
     save_data(data)
     return JSONResponse(status_code=200, content={'message':'patient updated'})
 
 @app.delete('/delete/{patient_id}')
 def delete_patient(patient_id: str):
-    # load data
     data = load_data()
     if patient_id not in data:
         raise HTTPException(status_code=404, detail='Patient not found')
-    
     del data[patient_id]
     save_data(data)
     return JSONResponse(status_code=200, content={'message':'patient deleted'})
-
-
-
-
-
-
-
-
-
-
 
 
 

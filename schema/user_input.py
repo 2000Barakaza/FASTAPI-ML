@@ -1,35 +1,50 @@
 from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import Literal, Annotated
-from config.city_tier import tier_1_cities, tier_2_cities
+from config.region_tier import regions, areas
 
 
-# pydantic model to validate incoming data
 class UserInput(BaseModel):
+    # ======================
+    # Raw input fields
+    # ======================
+    age: Annotated[int, Field(gt=0, lt=120, description="Age of the user")]
+    gender: Annotated[str, Field(description="Gender of the user")]
+    height_cm: Annotated[float, Field(gt=0, lt=250, description="Height in cm")]
+    weight_kg: Annotated[float, Field(gt=0, description="Weight in kg")]
+    regions: Annotated[str, Field(description="Regions")]
+    areas: Annotated[str, Field(description="Areas")]
+    condition: Annotated[str, Field(description="Medical condition")]
+    income_lpa: Annotated[float, Field(gt=0, description="Income in LPA")]
+    smoker: Annotated[bool, Field(description="Is smoker")]
+    occupation: Annotated[
+        Literal[
+            "retired",
+            "freelancer",
+            "student",
+            "government_job",
+            "business_owner",
+            "unemployed",
+            "private_job",
+        ],
+        Field(description="Occupation"),
+    ]
 
-    class UserInput(BaseModel):
-        age: Annotated[int, Field(gt=0, lt=120, description='Age of the user')]
-        gender: Annotated[str, Field(description='Gender of the user')]
-        height_cm: Annotated[float, Field(gt=0, lt=250, description='Height of the user in cm')]
-        weight_kg: Annotated[float, Field(gt=0, description='Weight of the user in kg')]
-        city: Annotated[str, Field(description='The city that the user belongs to')]
-        state: Annotated[str, Field(description='The state that the user belongs to')]
-        condition: Annotated[str, Field(description='Condition of the user (e.g., medical condition)')]
-        income_lpa: Annotated[float, Field(gt=0, description='Annual salary of the user in lpa')]
-        smoker: Annotated[bool, Field(description='Is user a smoker')]
-        occupation: Annotated[Literal['retired', 'freelancer', 'student', 'government_job',
-        'business_owner', 'unemployed', 'private_job'], Field(description='Occupation of the user')]
-    
-    @field_validator('city')
-    @classmethod
+    # ======================
+    # Validators
+    # ======================
+    @field_validator("Region")
     def normalize_city(cls, v: str) -> str:
-        v = v.strip().title()
-        return v
-    
+        return v.strip().title()
+
+    # ======================
+    # Computed fields
+    # ======================
     @computed_field
     @property
     def bmi(self) -> float:
-        return self.weight/(self.height**2)
-    
+        height_m = self.height_cm / 100
+        return round(self.weight_kg / (height_m ** 2), 2)
+
     @computed_field
     @property
     def lifestyle_risk(self) -> str:
@@ -37,9 +52,8 @@ class UserInput(BaseModel):
             return "high"
         elif self.smoker or self.bmi > 27:
             return "medium"
-        else:
-            return "low"
-        
+        return "low"
+
     @computed_field
     @property
     def age_group(self) -> str:
@@ -50,24 +64,15 @@ class UserInput(BaseModel):
         elif self.age < 60:
             return "middle_aged"
         return "senior"
-    
+
     @computed_field
     @property
-    def city_tier(self) -> int:
-        if self.city in tier_1_cities:
+    def region_tier(self) -> int:
+        if self.region in regions:
             return 1
-        elif self.city in tier_2_cities:
+        elif self.area in areas:
             return 2
-        else:
-            return 3
-        
-
-
-
-
-
-
-
+        return 3
 
 
 
