@@ -1,30 +1,19 @@
+
+
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import Annotated, Literal
 from config.region_tier import regions, areas
-from model.predict import predict_output, MODEL_VERSION
+from model.predict import predict_output, MODEL_VERSION, model
 import os
 import pickle
 import pandas as pd
-
 # =========================
 # App initialization
 # =========================
 app = FastAPI(title="Insurance Premium Prediction API")
-
-# =========================
-# Load ML model (ONCE)
-# =========================
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
-try:
-    with open(MODEL_PATH, "rb") as f:
-        model = pickle.load(f)
-except FileNotFoundError:
-    raise RuntimeError(
-        f"Model file not found at {MODEL_PATH}. Train the model first."
-    )
-
 # =========================
 # Pydantic Model
 # =========================
@@ -96,12 +85,10 @@ class UserInput(BaseModel):
         elif self.areas in areas:
             return 2
         return 3
-
 class PredictionResponse(BaseModel):
     predicted_category: str
     confidence: float
     class_probabilities: dict[str, float]
-
 # =========================
 # Routes
 # =========================
@@ -109,7 +96,6 @@ class PredictionResponse(BaseModel):
 @app.get("/")
 def home():
     return {"message": "Insurance Premium Prediction API"}
-
 # Machine-readable
 @app.get("/health")
 def health_check():
@@ -118,7 +104,6 @@ def health_check():
         "version": MODEL_VERSION,
         "model_loaded": model is not None,
     }
-
 @app.post("/predict", response_model=PredictionResponse)
 def predict_premium(data: UserInput):
     # =========================
@@ -141,18 +126,15 @@ def predict_premium(data: UserInput):
         "condition": data.condition,
     }
     try:
-        predicted_category, confidence, class_probabilities = predict_output(
-            model, user_input
-        )
-        return {
-            "predicted_category": predicted_category,
-            "confidence": float(confidence),
-            "class_probabilities": {
-                k: float(v) for k, v in class_probabilities.items()
-            },
-        }
+        return predict_output(user_input)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+
+
 
 
 
