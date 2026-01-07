@@ -7,7 +7,7 @@ API_URL = "http://127.0.0.1:8000/predict"  # Change to your remote URL if deploy
 # FHIR data (paste your JSON here)
 fhir_data = [...]  # Paste the full list from your query
 
-current = date(2026, 1, 1)
+current = date(2026, 1, 24)
 
 for p in fhir_data:
     name = p["name"][0]
@@ -26,8 +26,8 @@ for p in fhir_data:
         "height_cm": p["height"],  # cm, as fixed in app.py
         "contact": contact,
         "hypertension": hypertension,
-        "city": address["city"],
-        "state": address["state"],
+        "region": address["region"],
+        "area": address["area"],
         "gender": p["gender"] if p["gender"] in ["male", "female"] else "others",
         "condition": condition,
         "occupation": "private_job"  # Assume; change as needed

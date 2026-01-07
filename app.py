@@ -112,9 +112,9 @@ def predict_premium(data: UserInput):
         "age_group": data.age_group,
         "lifestyle_risk": data.lifestyle_risk,
         # map API fields to old model columns
-        "city": data.regions,        # was region
-        "city_tier": data.region_tier, # was region_tier
-        "state": data.areas,         # was area
+        "region": data.regions,        # was region
+        "region_tier": data.region_tier, # was region_tier
+        "area": data.areas,         # was area
         "income_lpa": data.income_lpa,
         "occupation": data.occupation,
         # raw features
@@ -128,3 +128,14 @@ def predict_premium(data: UserInput):
         return predict_output(user_input)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+
+
+
+
+
+
+
+
