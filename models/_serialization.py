@@ -2,8 +2,8 @@ from pydantic import BaseModel
 
 class Address(BaseModel):
 
-    city: str
-    state: str
+    region: str
+    area: str
     pin: str
 
 class Patient(BaseModel):
@@ -13,7 +13,7 @@ class Patient(BaseModel):
     age: int
     address: Address
 
-address_dict = {'city': 'gurgaon', 'state': 'haryana', 'pin': '122001'}
+address_dict = {'region': 'gurgaon', 'area': 'haryana', 'pin': '122001'}
 
 address1 = Address(**address_dict)
 
@@ -23,10 +23,10 @@ patient1 = Patient(**patient_dict)
 
 temp = patient1.model_dump(exclude_unset=True)
 
+
+
 print(temp)
 print(type(temp))
-
-
 
 
 

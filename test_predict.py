@@ -5,7 +5,122 @@ from datetime import date
 API_URL = "http://127.0.0.1:8000/predict"  # Change to your remote URL if deployed
 
 # FHIR data (paste your JSON here)
-fhir_data = [...]  # Paste the full list from your query
+fhir_data = [
+{
+  "patient-001": {
+    "age": 40,
+    "gender": "male",
+    "height_cm": 180.0,
+    "weight_kg": 85.0,
+    "region": "Dar-es-salaam",
+    "area": "Mbagala",
+    "condition": "None",
+    "income_lpa": 50.0,
+    "smoker": false,
+    "occupation": "private_job",
+    "bmi": 26.23,
+    "lifestyle_risk": "low",
+    "age_group": "adult",
+    "region_tier": 3
+  },
+  "patient-002": {
+    "age": 35,
+    "gender": "female",
+    "height_cm": 165.0,
+    "weight_kg": 70.0,
+    "region": "Dar-es-salaam",
+    "area": "Tandika",
+    "condition": "Type 2 diabetes mellitus",
+    "income_lpa": 50.0,
+    "smoker": false,
+    "occupation": "private_job",
+    "bmi": 25.71,
+    "lifestyle_risk": "low",
+    "age_group": "adult",
+    "region_tier": 3
+  },
+  "patient-003": {
+    "age": 53,
+    "gender": "female",
+    "height_cm": 160.0,
+    "weight_kg": 65.0,
+    "region": "Dar-es-salaam",
+    "area": "Msasani",
+    "condition": "Asthma",
+    "income_lpa": 50.0,
+    "smoker": false,
+    "occupation": "private_job",
+    "bmi": 25.39,
+    "lifestyle_risk": "low",
+    "age_group": "middle_aged",
+    "region_tier": 3
+  },
+  "patient-004": {
+    "age": 60,
+    "gender": "male",
+    "height_cm": 175.0,
+    "weight_kg": 80.0,
+    "region": "Dar-es-salaam",
+    "area": "Kigamboni",
+    "condition": "Low back pain",
+    "income_lpa": 50.0,
+    "smoker": false,
+    "occupation": "retired",
+    "bmi": 26.12,
+    "lifestyle_risk": "low",
+    "age_group": "senior",
+    "region_tier": 3
+  },
+  "patient-005": {
+    "age": 25,
+    "gender": "female",
+    "height_cm": 170.0,
+    "weight_kg": 60.0,
+    "region": "Dar-es-salaam",
+    "area": "Kawe",
+    "condition": "Generalized anxiety disorder",
+    "income_lpa": 50.0,
+    "smoker": false,
+    "occupation": "private_job",
+    "bmi": 20.76,
+    "lifestyle_risk": "low",
+    "age_group": "adult",
+    "region_tier": 3
+  },
+  "patient-006": {
+    "age": 25,
+    "gender": "male",
+    "height_cm": 56.0,
+    "weight_kg": 71.0,
+    "region": "Dar-es-salaam",
+    "area": "Magomeni",
+    "condition": "None",
+    "income_lpa": 2.5,
+    "smoker": false,
+    "occupation": "private_job",
+    "bmi": 226.4,
+    "lifestyle_risk": "medium",
+    "age_group": "adult",
+    "region_tier": 3
+  },
+  "PATIENT-007": {
+    "age": 34,
+    "gender": "male",
+    "height_cm": 178.0,
+    "weight_kg": 71.0,
+    "regions": "Dar-Es-Salaam",
+    "areas": "Vingunguti",
+    "condition": "Hypertension",
+    "income_lpa": 62.4,
+    "smoker": true,
+    "occupation": "retired",
+    "bmi": 22.41,
+    "lifestyle_risk": "medium",
+    "age_group": "adult",
+    "region_tier": 2
+  }
+}
+]  # Paste the full list from your query
 
 current = date(2026, 1, 24)
 
@@ -38,6 +153,26 @@ for p in fhir_data:
         print(f"Prediction for {p['id']}: {response.json()}")
     else:
         print(f"Error for {p['id']}: {response.text}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

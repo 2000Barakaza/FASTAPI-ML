@@ -13,8 +13,8 @@ class Patient(BaseModel):
     gender: Annotated[str, Field(description="Gender of the user")]
     height_cm: Annotated[float, Field(gt=0, lt=250, description="Height in cm")]
     weight_kg: Annotated[float, Field(gt=0, description="Weight in kg")]
-    regions: Annotated[str, Field(description="Regions")]
-    areas: Annotated[str, Field(description="Areas")]
+    region: Annotated[str, Field(description="Region")]
+    area: Annotated[str, Field(description="Area")]
     condition: Annotated[str, Field(description="Medical condition")]
     income_lpa: Annotated[float, Field(gt=0, description="Income in LPA")]
     smoker: Annotated[bool, Field(description="Is smoker")]
@@ -34,11 +34,11 @@ class Patient(BaseModel):
     # ======================
     # Validators
     # ======================
-    @field_validator("regions")
+    @field_validator("region")
     def normalize_regions(cls, v: str) -> str:
         return v.strip().title()
 
-    @field_validator("areas")
+    @field_validator("area")
     def normalize_areas(cls, v: str) -> str:
         return v.strip().title()
 
@@ -186,6 +186,13 @@ def delete_patient(patient_id: str):
     del data[patient_id]
     save_data(data)
     return JSONResponse(status_code=200, content={'message':'patient deleted'})
+
+
+
+
+
+
+
 
 
 

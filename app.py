@@ -16,7 +16,7 @@ app = FastAPI(title="Insurance Premium Prediction API")
 # =========================
 # Pydantic Model
 # =========================
-class UserInput(BaseModel):
+class Patient(BaseModel):
     # ======================
     # Raw input fields
     # ======================
@@ -131,6 +131,11 @@ def predict_premium(data: UserInput):
         return predict_output(user_input)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+
 
 
 

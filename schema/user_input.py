@@ -11,8 +11,8 @@ class UserInput(BaseModel):
     gender: Annotated[str, Field(description="Gender of the user")]
     height_cm: Annotated[float, Field(gt=0, lt=250, description="Height in cm")]
     weight_kg: Annotated[float, Field(gt=0, description="Weight in kg")]
-    regions: Annotated[str, Field(description="Regions")]
-    areas: Annotated[str, Field(description="Areas")]
+    region: Annotated[str, Field(description="Region")]
+    area: Annotated[str, Field(description="Area")]
     condition: Annotated[str, Field(description="Medical condition")]
     income_lpa: Annotated[float, Field(gt=0, description="Income in LPA")]
     smoker: Annotated[bool, Field(description="Is smoker")]
@@ -33,7 +33,11 @@ class UserInput(BaseModel):
     # Validators
     # ======================
     @field_validator("Region")
-    def normalize_city(cls, v: str) -> str:
+    def normalize_region(cls, v: str) -> str:
+        return v.strip().title()
+
+    @field_validator("Area")
+    def normalize_area(cls, v: str) -> str:
         return v.strip().title()
 
     # ======================
@@ -73,6 +77,14 @@ class UserInput(BaseModel):
         elif self.area in areas:
             return 2
         return 3
+
+
+
+
+        
+
+
+
 
 
 

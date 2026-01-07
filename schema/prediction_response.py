@@ -27,8 +27,3 @@ class PredictionResponse(BaseModel):
 
 
 
-
-
-
-
-    
