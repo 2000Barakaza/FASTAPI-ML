@@ -1,6 +1,3 @@
-
-
-
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, computed_field, field_validator
@@ -10,10 +7,12 @@ from model.predict import predict_output, MODEL_VERSION, model
 import os
 import pickle
 import pandas as pd
+
 # =========================
 # App initialization
 # =========================
 app = FastAPI(title="Insurance Premium Prediction API")
+
 # =========================
 # Pydantic Model
 # =========================
@@ -45,11 +44,11 @@ class UserInput(BaseModel):
     # ======================
     # Validators
     # ======================
-    @field_validator("regions")
-    def normalize_regions(cls, v: str) -> str:
+    @field_validator("region")
+    def normalize_region(cls, v: str) -> str:
         return v.strip().title()
-    @field_validator("areas")
-    def normalize_areas(cls, v: str) -> str:
+    @field_validator("area")
+    def normalize_area(cls, v: str) -> str:
         return v.strip().title()
     # ======================
     # Computed fields
@@ -80,15 +79,17 @@ class UserInput(BaseModel):
     @computed_field
     @property
     def region_tier(self) -> int:
-        if self.regions in regions:
+        if self.region in regions:
             return 1
-        elif self.areas in areas:
+        elif self.area in areas:
             return 2
         return 3
+
 class PredictionResponse(BaseModel):
     predicted_category: str
     confidence: float
     class_probabilities: dict[str, float]
+
 # =========================
 # Routes
 # =========================
@@ -96,6 +97,7 @@ class PredictionResponse(BaseModel):
 @app.get("/")
 def home():
     return {"message": "Insurance Premium Prediction API"}
+
 # Machine-readable
 @app.get("/health")
 def health_check():
@@ -104,6 +106,7 @@ def health_check():
         "version": MODEL_VERSION,
         "model_loaded": model is not None,
     }
+
 @app.post("/predict", response_model=PredictionResponse)
 def predict_premium(data: UserInput):
     user_input = {
@@ -112,9 +115,9 @@ def predict_premium(data: UserInput):
         "age_group": data.age_group,
         "lifestyle_risk": data.lifestyle_risk,
         # map API fields to old model columns
-        "region": data.regions,        # was region
+        "region": data.region,        # was region
         "region_tier": data.region_tier, # was region_tier
-        "area": data.areas,         # was area
+        "area": data.area,         # was area
         "income_lpa": data.income_lpa,
         "occupation": data.occupation,
         # raw features
@@ -128,8 +131,6 @@ def predict_premium(data: UserInput):
         return predict_output(user_input)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-
 
 
 
