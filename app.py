@@ -108,7 +108,7 @@ def health_check():
     }
 
 @app.post("/predict", response_model=PredictionResponse)
-def predict_premium(data: UserInput):
+def predict_premium(data: Patient):
     user_input = {
         # engineered features
         "bmi": data.bmi,
@@ -131,6 +131,9 @@ def predict_premium(data: UserInput):
         return predict_output(user_input)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
 
 
 
