@@ -25,8 +25,8 @@ class UserInput(BaseModel):
     gender: Annotated[str, Field(description="Gender of the user")]
     height_cm: Annotated[float, Field(gt=0, lt=250, description="Height in cm")]
     weight_kg: Annotated[float, Field(gt=0, description="Weight in kg")]
-    regions: Annotated[str, Field(description="Regions")]
-    areas: Annotated[str, Field(description="Areas")]
+    region: Annotated[str, Field(description="Region")]
+    area: Annotated[str, Field(description="Area")]
     condition: Annotated[str, Field(description="Medical condition")]
     income_lpa: Annotated[float, Field(gt=0, description="Income in LPA")]
     smoker: Annotated[bool, Field(description="Is smoker")]
@@ -106,15 +106,15 @@ def health_check():
     }
 @app.post("/predict", response_model=PredictionResponse)
 def predict_premium(data: UserInput):
-    # =========================
-    # Feature engineering
-    # =========================
     user_input = {
         # engineered features
         "bmi": data.bmi,
         "age_group": data.age_group,
         "lifestyle_risk": data.lifestyle_risk,
-        "regions": data.regions,
+        # map API fields to old model columns
+        "city": data.regions,        # was region
+        "city_tier": data.region_tier, # was region_tier
+        "state": data.areas,         # was area
         "income_lpa": data.income_lpa,
         "occupation": data.occupation,
         # raw features
@@ -122,19 +122,9 @@ def predict_premium(data: UserInput):
         "gender": data.gender,
         "height_cm": data.height_cm,
         "weight_kg": data.weight_kg,
-        "areas": data.areas,
         "condition": data.condition,
     }
     try:
         return predict_output(user_input)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
-
-
-
-
-
