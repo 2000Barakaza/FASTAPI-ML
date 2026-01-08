@@ -188,6 +188,23 @@ def delete_patient(patient_id: str):
     return JSONResponse(status_code=200, content={'message':'patient deleted'})
 
 
+class PredictionInput(BaseModel):
+    age: int
+    weight: float
+    height: float
+    income: float
+    smoker: bool
+    region: str
+    area: str
+    occupation: str
+
+@app.post("/predict")
+def predict(data: PredictionInput):
+    # TEMP: replace with your real ML model
+    return {
+        "premium_category": "Medium",
+        "input_received": data
+    }
 
 
 
