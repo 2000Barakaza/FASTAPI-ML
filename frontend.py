@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-API_URL = "http://34.226.152.222:8000/predict"
+API_URL = "http://34.226.152.222/predict"
 
 st.title("Insurance Premium Category Predictor")
 st.markdown("Enter your details below:")
@@ -48,6 +48,7 @@ if st.button("Predict Premium Category"):
 
     except requests.exceptions.ConnectionError:
         st.error("❌ Could not connect to the FastAPI server. Make sure it's running.")
+
 
 
 
