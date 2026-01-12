@@ -58,7 +58,8 @@
 import streamlit as st
 import requests
 
-API_URL = "http://127.0.0.1:8000/predict"  # Change to deployed URL later, e.g., via st.secrets
+#API_URL = "http://127.0.0.1:8000/predict"  # Change to deployed URL later, e.g., via st.secrets
+API_URL = "http://172.232.112.57:8000/predict"
 
 st.title("Insurance Premium Category Predictor")
 st.markdown("Enter your details below:")
