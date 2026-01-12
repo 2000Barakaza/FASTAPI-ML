@@ -148,3 +148,5 @@ def predict_premium(data: Patient):
 
 
 
+
+
