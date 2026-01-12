@@ -1,3 +1,6 @@
+
+
+'''
 import streamlit as st
 import requests
 
@@ -50,6 +53,7 @@ if st.button("Predict Premium Category"):
     except requests.exceptions.ConnectionError:
         st.error("❌ Could not connect to the FastAPI server. Make sure it's running.")
 
+'''
 
 
 
@@ -60,9 +64,50 @@ if st.button("Predict Premium Category"):
 
 
 
+import streamlit as st
+import requests
 
+API_URL = "http://127.0.0.1:8000/predict"  # Change to deployed URL later, e.g., via st.secrets
 
+st.title("Insurance Premium Category Predictor")
+st.markdown("Enter your details below:")
 
+age = st.number_input("Age", min_value=1, max_value=119, value=30)
+weight = st.number_input("Weight (kg)", min_value=1.0, value=65.0)
+height = st.number_input("Height (m)", min_value=0.5, max_value=2.5, value=1.7, step=0.01)
+income_lpa = st.number_input("Annual Income (LPA)", min_value=0.1, value=10.0)
+smoker = st.selectbox("Are you a smoker?", options=[True, False], format_func=lambda x: "Yes" if x else "No")
+region = st.text_input("Region", value="Dar-es-salaam").strip().title()
+area = st.text_input("Area", value="Mbagala").strip().title()
+occupation = st.selectbox("Occupation", options=[
+    "retired", "freelancer", "student", "government_job",
+    "business_owner", "unemployed", "private_job"
+])
+
+if st.button("Predict Premium Category"):
+    input_data = {
+        "age": age,
+        "weight": weight,
+        "height": height,
+        "income": income_lpa,
+        "smoker": smoker,
+        "region": region,
+        "area": area,
+        "occupation": occupation
+    }
+    try:
+        response = requests.post(API_URL, json=input_data, timeout=10)
+        response.raise_for_status()
+        result = response.json()
+        st.success(f"**Predicted Premium Category: {result['premium_category']}**")
+        with st.expander("Input Details"):
+            st.json(result["input_received"])
+    except requests.exceptions.ConnectionError:
+        st.error("❌ Could not connect to FastAPI server. Make sure it's running on port 8000.")
+    except requests.exceptions.HTTPError as e:
+        st.error(f"API Error: {e.response.status_code} - {e.response.text}")
+    except Exception as e:
+        st.error(f"Unexpected error: {str(e)}")
 
 
 

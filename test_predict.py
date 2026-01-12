@@ -1,3 +1,5 @@
+
+'''
 import requests
 import json
 from datetime import date
@@ -153,6 +155,7 @@ for p in fhir_data:
         print(f"Prediction for {p['id']}: {response.json()}")
     else:
         print(f"Error for {p['id']}: {response.text}")
+'''
 
 
 
@@ -164,9 +167,57 @@ for p in fhir_data:
 
 
 
+import requests
+from datetime import date
 
+API_URL = "http://127.0.0.1:8000/predict"  # Change to deployed URL if needed
 
+# Your custom patient data (fixed booleans, consistent keys)
+patients = {
+    "patient-001": {
+        "age": 40, "gender": "male", "height_cm": 180.0, "weight_kg": 85.0,
+        "region": "Dar-es-salaam", "area": "Mbagala", "condition": "None",
+        "income_lpa": 50.0, "smoker": False, "occupation": "private_job"
+    },
+    "patient-002": {
+        "age": 35, "gender": "female", "height_cm": 165.0, "weight_kg": 70.0,
+        "region": "Dar-es-salaam", "area": "Tandika", "condition": "Type 2 diabetes mellitus",
+        "income_lpa": 50.0, "smoker": False, "occupation": "private_job"
+    },
+    # ... add the rest here (I shortened for brevity; copy-paste your full dict)
+    "PATIENT-007": {
+        "age": 34, "gender": "male", "height_cm": 178.0, "weight_kg": 71.0,
+        "regions": "Dar-Es-Salaam", "areas": "Vingunguti",  # Note plural here
+        "condition": "Hypertension", "income_lpa": 62.4,
+        "smoker": True, "occupation": "retired"
+    }
+    # Add others...
+}
 
+for patient_id, p in patients.items():
+    # Handle singular/plural region/area
+    region = p.get("region") or p.get("regions", "")
+    area = p.get("area") or p.get("areas", "")
+    
+    input_data = {
+        "age": p["age"],
+        "weight": p["weight_kg"],
+        "height": p["height_cm"] / 100,  # Convert cm → meters (matches frontend/API)
+        "income": p["income_lpa"],
+        "smoker": p["smoker"],
+        "region": region.strip().title(),
+        "area": area.strip().title(),
+        "occupation": p["occupation"]
+    }
+    
+    try:
+        response = requests.post(API_URL, json=input_data, timeout=5)
+        response.raise_for_status()
+        result = response.json()
+        print(f"Prediction for {patient_id}: {result['premium_category']}")
+        print(f"  Details: {result['input_received']}\n")
+    except requests.exceptions.RequestException as e:
+        print(f"Error for {patient_id}: {e}")
 
 
 
