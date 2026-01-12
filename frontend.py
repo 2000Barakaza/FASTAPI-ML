@@ -102,9 +102,9 @@ if st.button("Predict Premium Category"):
     input_data = {
         "age": age,
         "gender": gender,
-        "height_cm": int(height * 100),   # ✅ converted to cm
-        "weight_kg": weight,              # ✅ renamed
-        "income_lpa": income_lpa,          # ✅ renamed
+        "height_cm": int(height * 100),
+        "weight_kg": weight,
+        "income_lpa": income_lpa,
         "smoker": smoker,
         "condition": condition,
         "region": region,
@@ -117,12 +117,20 @@ if st.button("Predict Premium Category"):
         response.raise_for_status()
         result = response.json()
 
-        st.success(
-            f"**Predicted Premium Category: {result['premium_category']}**"
+        # ✅ SAFE RESPONSE HANDLING (introduced here)
+        premium = (
+            result.get("premium_category")
+            or result.get("prediction")
+            or result.get("premium")
         )
 
+        if premium:
+            st.success(f"**Predicted Premium Category: {premium}**")
+        else:
+            st.error("❌ API response did not include a premium category")
+
         with st.expander("Input Details"):
-            st.json(result["input_received"])
+            st.json(result)
 
     except requests.exceptions.ConnectionError:
         st.error("❌ Could not connect to FastAPI server. Make sure it's running on port 8000.")
@@ -132,10 +140,3 @@ if st.button("Predict Premium Category"):
 
     except Exception as e:
         st.error(f"Unexpected error: {str(e)}")
-
-
-
-
-
-
-
