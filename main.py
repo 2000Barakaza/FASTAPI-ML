@@ -412,25 +412,34 @@ def delete(patient_id: str):
     save_data(data)
     return {"message": "Patient deleted"}
 
+# ... (rest of main.py remains the same, up to the Patient class)
+
 class PredictionInput(BaseModel):
     age: int
-    weight: float          # kg
-    height: float          # meters (consistent with frontend)
-    income: float          # LPA
+    gender: str  # ✅ Added
+    height_cm: float  # ✅ Renamed/expected in cm
+    weight_kg: float  # ✅ Renamed
+    income_lpa: float  # ✅ Renamed
     smoker: bool
+    condition: str  # ✅ Added
     region: str
     area: str
     occupation: str
 
 @app.post("/predict")
 def predict(data: PredictionInput):
-    # TODO: Replace with real ML model (e.g., load from joblib/pickle)
-    # For now, dummy logic based on lifestyle_risk style
-    bmi = data.weight / (data.height ** 2)
-    risk = "high" if data.smoker and bmi > 30 else "medium" if data.smoker or bmi > 27 else "low"
-    premium = risk.title()  # Simple mapping
+    # TODO: Replace with real ML model
+    # For dummy: Incorporate new fields (e.g., adjust risk if condition != "none" or gender-based factors)
+    height_m = data.height_cm / 100
+    bmi = data.weight_kg / (height_m ** 2)
+    base_risk = "high" if data.smoker and bmi > 30 else "medium" if data.smoker or bmi > 27 else "low"
+    # Simple adjustment examples:
+    if data.condition != "none":
+        base_risk = "high" if base_risk == "medium" else base_risk  # Escalate if pre-existing
+    if data.gender == "male" and data.age > 50:  # Hypothetical gender/age factor
+        base_risk = "medium" if base_risk == "low" else base_risk
+    premium = base_risk.title()
     return {"premium_category": premium, "input_received": data.dict()}
-
 
 
 
