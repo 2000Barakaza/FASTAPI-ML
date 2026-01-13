@@ -228,17 +228,112 @@
 
 
 
-
-
-
-
-from fastapi import FastAPI, Path, HTTPException, Query
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, computed_field, field_validator
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal, Optional
-from config.region_tier import regions, areas  # Assuming these are sets/lists
+
 import json
+import jwt
+from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+#from jwt.exceptions import InvalidTokenError
+from passlib.context import CryptContext
+from pydantic import BaseModel, Field, computed_field, field_validator
+from jose import JWTError, jwt
+from jwt import InvalidTokenError
+
+
+from config.region_tier import areas, regions  # Assuming these are sets/lists
+
+# to get a string like this run: openssl rand -hex 32
+SECRET_KEY = "8b2d1587b7946cebd8205a25e76cb031a3d88e8d1c03d816bf0f6f2a9446738f"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+fake_users_db = {
+    "barakadaudi": {
+        "username": "barakadaudi",
+        "full_name": "Baraka Daudi",
+        "email": "manjale2021@gmail.com",
+        "hashed_password": "$2b$12$/SGbBqu83lUCNEFgFEQqlucU1mnQDlgc15S4mhElj4DcKaC8SMFX6",  # bcrypt hash for 'secret' (example)
+        "disabled": False,
+    }
+}
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: str | None = None
+
+class User(BaseModel):
+    username: str
+    email: str | None = None
+    full_name: str | None = None
+    disabled: bool | None = None
+
+class UserInDB(User):
+    hashed_password: str
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+def authenticate_user(fake_db, username: str, password: str):
+    user = get_user(fake_db, username)
+    if not user:
+        return False
+    if not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except InvalidTokenError:
+        raise credentials_exception
+    user = get_user(fake_users_db, username=token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
+
+async def get_current_active_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
 
 app = FastAPI(title="Patient Management & Premium Predictor API")
 
@@ -355,18 +450,18 @@ def save_data(data: dict):
         json.dump(data, f, indent=2)
 
 @app.get("/view")
-def view_all():
+def view_all(current_user: Annotated[User, Depends(get_current_active_user)]):
     return load_data()
 
 @app.get("/patient/{id}")
-def view_patient(id: str = Path(..., examples=["P001"])):
+def view_patient(current_user: Annotated[User, Depends(get_current_active_user)], id: str = Path(..., examples=["P001"])):
     data = load_data()
     if id in data:
         return data[id]
     raise HTTPException(404, "Patient not found")
 
 @app.get("/sort")
-def sort_patients(sort_by: str = Query(..., description="height_cm, weight_kg, or bmi"),
+def sort_patients(current_user: Annotated[User, Depends(get_current_active_user)], sort_by: str = Query(..., description="height_cm, weight_kg, or bmi"),
                   order: str = Query("asc", description="asc or desc")):
     valid = ["height_cm", "weight_kg", "bmi"]
     if sort_by not in valid:
@@ -378,7 +473,7 @@ def sort_patients(sort_by: str = Query(..., description="height_cm, weight_kg, o
     return sorted_data
 
 @app.post("/create")
-def create(patient: Patient):
+def create(patient: Patient, current_user: Annotated[User, Depends(get_current_active_user)]):
     data = load_data()
     if patient.id in data:
         raise HTTPException(400, "Patient already exists")
@@ -387,7 +482,7 @@ def create(patient: Patient):
     return JSONResponse(status_code=201, content={"message": "Patient created"})
 
 @app.put("/edit/{patient_id}")
-def update(patient_id: str, update: PatientUpdate):
+def update(patient_id: str, update: PatientUpdate, current_user: Annotated[User, Depends(get_current_active_user)]):
     data = load_data()
     if patient_id not in data:
         raise HTTPException(404, "Patient not found")
@@ -404,15 +499,13 @@ def update(patient_id: str, update: PatientUpdate):
         raise HTTPException(400, str(e))
 
 @app.delete("/delete/{patient_id}")
-def delete(patient_id: str):
+def delete(patient_id: str, current_user: Annotated[User, Depends(get_current_active_user)]):
     data = load_data()
     if patient_id not in data:
         raise HTTPException(404, "Patient not found")
     del data[patient_id]
     save_data(data)
     return {"message": "Patient deleted"}
-
-# ... (rest of main.py remains the same, up to the Patient class)
 
 class PredictionInput(BaseModel):
     age: int
@@ -440,6 +533,38 @@ def predict(data: PredictionInput):
         base_risk = "medium" if base_risk == "low" else base_risk
     premium = base_risk.title()
     return {"premium_category": premium, "input_received": data.dict()}
+
+@app.post("/token")
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+) -> Token:
+    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return Token(access_token=access_token, token_type="bearer")
+
+@app.get("/users/me/", response_model=User)
+async def read_users_me(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    return current_user
+
+@app.get("/users/me/items/")
+async def read_own_items(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    return [{"item_id": "Foo", "owner": current_user.username}]
+
+
+
 
 
 
