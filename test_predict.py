@@ -66,9 +66,9 @@ for patient_id, p in patients.items():
     
     input_data = {
         "age": p["age"],
-        "weight": p["weight_kg"],
-        "height": p["height_cm"] / 100,  # Convert cm → meters (matches frontend/API)
-        "income": p["income_lpa"],
+        "weight_kg": p["weight_kg"],
+        "height_cm": p["height_cm"] / 100,  # Convert cm → meters (matches frontend/API)
+        "income_lpa": p["income_lpa"],
         "smoker": p["smoker"],
         "region": region.strip().title(),
         "area": area.strip().title(),
@@ -100,9 +100,6 @@ for patient_id, p in patients.items():
 
   
         
-
-
-
 
 
 

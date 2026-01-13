@@ -60,7 +60,6 @@
 
 
 
-
 import streamlit as st
 import requests
 
@@ -119,15 +118,23 @@ if st.button("Predict Premium Category"):
             response = requests.post(API_URL, json=input_data, timeout=10)
             response.raise_for_status()
             result = response.json()
-            # Enhanced premium extraction
-            premium_keys = ["premium_category", "prediction", "premium", "category"]
+            # Enhanced premium extraction with new key
+            premium_keys = ["premium_category", "prediction", "premium", "category", "predicted_category"]
             premium = next((result.get(key) for key in premium_keys if key in result), None)
             if premium:
                 st.success(f"**Predicted Premium Category: {premium}**")
+                # Optional: Display confidence/probs if available
+                confidence = result.get("confidence")
+                probs = result.get("class_probabilities")
+                if confidence:
+                    st.info(f"Confidence: {confidence:.2f}")
+                if probs:
+                    st.write("Class Probabilities:")
+                    st.json(probs)
             else:
                 st.error("❌ API response did not include a premium category")
-                with st.expander("Full API Response (for debugging)"):
-                    st.json(result)
+            with st.expander("Full API Response (for debugging)"):
+                st.json(result)
             with st.expander("Input Details"):
                 st.json(input_data)  # Show input for verification
         except requests.exceptions.ConnectionError:
@@ -136,6 +143,11 @@ if st.button("Predict Premium Category"):
             st.error(f"API Error: {e.response.status_code} - {e.response.text}")
         except Exception as e:
             st.error(f"Unexpected error: {str(e)}")
+
+
+
+
+
 
 
 
