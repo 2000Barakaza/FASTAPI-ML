@@ -228,26 +228,27 @@
 
 
 
+
+
+
+
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal, Optional
 
 import json
-import jwt
 from fastapi import Depends, FastAPI, HTTPException, Path, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-#from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field, computed_field, field_validator
-from jose import JWTError, jwt
-from jwt import InvalidTokenError
 
+from jose import jwt, JWTError  # ✅ Correct import for JWT
 
 from config.region_tier import areas, regions  # Assuming these are sets/lists
 
 # to get a string like this run: openssl rand -hex 32
-SECRET_KEY = "8b2d1587b7946cebd8205a25e76cb031a3d88e8d1c03d816bf0f6f2a9446738f"
+SECRET_KEY = "9b1e82e5ba5870777e72d844869326c695f5c55edc9c18555594a65d681fe476"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -255,8 +256,8 @@ fake_users_db = {
     "barakadaudi": {
         "username": "barakadaudi",
         "full_name": "Baraka Daudi",
-        "email": "manjale2021@gmail.com",
-        "hashed_password": "$2b$12$/SGbBqu83lUCNEFgFEQqlucU1mnQDlgc15S4mhElj4DcKaC8SMFX6",  # bcrypt hash for 'secret' (example)
+        "email": "barakadaudi@example.com",
+        "hashed_password": "$2b$12$4kdnL7GH3s8DvFA/dtJa7enqvsCNJ1ZupE6Tl4h39K2nt8BG0SmQ.",  # bcrypt hash for 'secret' (example)
         "disabled": False,
     }
 }
@@ -321,7 +322,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         if username is None:
             raise credentials_exception
         token_data = TokenData(username=username)
-    except InvalidTokenError:
+    except JWTError:  # ✅ Correct exception
         raise credentials_exception
     user = get_user(fake_users_db, username=token_data.username)
     if user is None:
