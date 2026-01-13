@@ -140,3 +140,11 @@ if st.button("Predict Premium Category"):
 
     except Exception as e:
         st.error(f"Unexpected error: {str(e)}")
+
+
+
+
+
+
+
+
