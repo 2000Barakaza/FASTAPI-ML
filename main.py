@@ -231,9 +231,6 @@
 
 
 
-
-
-
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal, Optional
 import json
@@ -257,7 +254,8 @@ fake_users_db = {
         "username": "barakadaudi",
         "full_name": "Baraka Daudi",
         "email": "barakadaudi@example.com",
-        "hashed_password": "$2b$12$4kdnL7GH3s8DvFA/dtJaTenqvsCNJ1ZupE6Tl4h39K2nt8BG0SmQ.",  # bcrypt for 'secret'
+        "password": "secret",
+        "hashed_password": "$2b$12$3JsBnATTEoF8pD/GLWLVj.vTiKwSB0oJb93P2CGqeuPHA8zL7ad9S",  # bcrypt for 'secret'
         "disabled": False,
     }
 }
