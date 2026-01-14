@@ -58,13 +58,11 @@
 
 
 
-
-
-
 import streamlit as st
 import requests
 
-API_BASE = "http://172.232.112.57:8000"  # Your live server; change to localhost for local testing
+#API_BASE = "http://172.232.112.57:80API_BASE = "http://127.0.0.1:8000"  # Use this if server is local; revert to remote IP once deployed
+API_BASE = "http://127.0.0.1:8000"  # Use this if server is local; revert to remote IP once deployed
 API_URL = f"{API_BASE}/predict"
 
 st.title("Insurance Premium Category Predictor")
