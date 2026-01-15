@@ -57,7 +57,6 @@
 
 
 
-
 import streamlit as st
 import requests
 
@@ -181,6 +180,12 @@ else:
                 st.error("Could not connect to the server. Is it running?")
             except Exception as e:
                 st.error(f"Unexpected error: {str(e)}")
+
+
+
+
+
+
 
 
 
