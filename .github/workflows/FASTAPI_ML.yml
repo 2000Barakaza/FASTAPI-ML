@@ -13,12 +13,12 @@ jobs:
       matrix:
         python-version: ["3.8"]  # Add more like "3.9", "3.10", "3.11", "3.12" later if needed
 
-    env:
-      MODE: "dev"
+    #env:
+      #MODE: "dev"
 
-    defaults:
-      run:
-        working-directory: ./app  # Assuming your code (app.py, requirements.txt, tests) lives in /app folder
+    #defaults:
+      #run:
+       # working-directory: ./app  # Assuming your code (app.py, requirements.txt, tests) lives in /app folder
 
     steps:
       - name: Checkout code
@@ -36,10 +36,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Test code
-        run: python ./main_test.py  # Adjust if your test file is test_predict.py or similar
-
-
-
+        run: python ./main.py  # Adjust if your test file is test_predict.py or similar
 
 
 
