@@ -15,7 +15,9 @@ jobs:
 
     env:
       MODE: ${{ secrets.MODE }}  # Fixed: added space after colon
+ ##  secrete.MOE
 
+ 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -33,6 +35,11 @@ jobs:
 
       - name: Run tests
         run: python ./main_test.py  # Updated back to main_test.py (adjust if main.py is correct for your tests)
+
+        
+
+
+
 
 
 
