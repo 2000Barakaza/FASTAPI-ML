@@ -11,35 +11,25 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.8"]  # Add more like "3.9", "3.10", "3.11", "3.12" later if needed
-
-    #env:
-      #MODE: "dev"
-
-    #defaults:
-      #run:
-       # working-directory: ./app  # Assuming your code (app.py, requirements.txt, tests) lives in /app folder
+        python-version: ["3.9"]  # Bumped to 3.9 for Altair 6.0.0 compatibility; add "3.10", "3.11", "3.12" later for broader testing
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5  # Latest major version
+        uses: actions/checkout@v5  # Latest stable
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6  # Updated to latest (v6 as of 2026)
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'  # Auto-caches pip dependencies → faster builds
+          cache: 'pip'  # Caches pip installs → much faster on repeat runs
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Test code
-        run: python ./main.py  # Adjust if your test file is test_predict.py or similar
-
-
-
+      - name: Run tests
+        run: python ./main_test.py   # Change to ./test_predict.py if that's your actual test file
 
 
         
