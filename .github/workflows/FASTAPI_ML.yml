@@ -1,37 +1,48 @@
-name: FASTAPI-ML Tests 
+name: FASTAPI-ML Tests
 
 on:
   pull_request:
     branches:
-      - main 
+      - main
 
 jobs:
-   test:
-     runs-on: ubuntu-latest 
-     defaults: 
-        run:
-          working-directory: ./app/ 
+  test:
+    runs-on: ubuntu-latest
 
-     strategy:
-        matrix: 
-          python-version: [3.8]
-     env:
-       MODE: "dev"
+    strategy:
+      matrix:
+        python-version: ["3.8"]  # Add more like "3.9", "3.10", "3.11", "3.12" later if needed
 
-     steps:
-       - uses: actions/checkout@v3 
+    env:
+      MODE: "dev"
 
-       - name: Set up Python
-         uses: actions/setup-python@v4 
-         with: 
-            python-version: ${{matrix.python-version}}
+    defaults:
+      run:
+        working-directory: ./app  # Assuming your code (app.py, requirements.txt, tests) lives in /app folder
 
-       - name: Install dependencies 
-         run: | 
-          python -m pip install --upgrade pip 
-          pip install -r ../requirements.txt 
-      
-       - name: Test App code 
-         run: python ./main_test.py
-         
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5  # Latest major version
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6  # Updated to latest (v6 as of 2026)
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'  # Auto-caches pip dependencies → faster builds
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Test code
+        run: python ./main_test.py  # Adjust if your test file is test_predict.py or similar
+
+
+
+
+
+
+
+
         
