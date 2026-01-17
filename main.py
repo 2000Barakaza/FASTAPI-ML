@@ -228,7 +228,7 @@
 
 
 
-from fastapi import FastAPI, Path, HTTPException, Query, Depends, status
+from fastapi import FastAPI, Path, HTTPException, Query, Depends, status, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -539,7 +539,10 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
     return Token(access_token=access_token, token_type="bearer")
 
 @app.post("/auth/register")
-def register(email: str, password: str):
+def register(
+    email: str = Form(...), 
+    password: str = Form(...),
+):
     if get_user(email):  # Check if email or generated username exists
         raise HTTPException(400, "Email already registered")
     username = email.split("@")[0].lower()
