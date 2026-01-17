@@ -202,6 +202,16 @@ def predictor_page():
             st.error(res.text)
 
 
+# ---------------------------
+# MAIN
+# ---------------------------
+if st.session_state.page == "login":
+    login_page()
+elif st.session_state.page == "signup":
+    signup_page()
+elif st.session_state.page == "predict":
+    predictor_page()
+
 
 
 
