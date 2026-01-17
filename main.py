@@ -274,7 +274,7 @@ def get_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="secret",  # Add your password here
+        password="",  # Add your password here
         database="fastapi_ml"
     )
 
@@ -714,6 +714,21 @@ def predict(
         "bmi": round(bmi, 2),
         "input_received": data.model_dump()
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
