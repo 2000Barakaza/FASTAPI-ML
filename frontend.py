@@ -60,143 +60,129 @@
 import streamlit as st
 import requests
 
-#API_BASE = "http://172.232.112.57:80API_BASE = "http://127.0.0.1:8000"  # Use this if server is local; revert to remote IP once deployed
-API_BASE = "http://127.0.0.1:8000"  # Use this if server is local; revert to remote IP once deployed
-API_URL = f"{API_BASE}/predict"
+API_BASE = "http://127.0.0.1:8000"
 
-st.title("Insurance Premium Category Predictor")
+# ---------------------------
+# INIT PAGE STATE
+# ---------------------------
+if "page" not in st.session_state:
+    st.session_state.page = "login"
 
-def get_headers():
-    token = st.session_state.get("token")
-    return {"Authorization": f"Bearer {token}"} if token else {}
+if "token" not in st.session_state:
+    st.session_state.token = None
 
+# ---------------------------
+# HELPERS
+# ---------------------------
+def auth_headers():
+    return {"Authorization": f"Bearer {st.session_state.token}"}
+
+# ---------------------------
+# LOGIN PAGE
+# ---------------------------
 def login_page():
-    st.markdown("🚀 **Welcome!** Login or Sign Up below.")
-    identifier = st.text_input("Email or Username:")
-    password = st.text_input("Password:", type="password")
+    st.title("Insurance Premium Predictor")
+
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
 
     col1, col2 = st.columns(2)
+
     with col1:
-        if st.button("Login", type="primary", use_container_width=True):
-            if identifier and password:
-                login_data = {"username": identifier, "password": password}
-                try:
-                    response = requests.post(f"{API_BASE}/token", data=login_data)
-                    if response.status_code == 200:
-                        token_data = response.json()
-                        st.session_state.token = token_data["access_token"]
-                        user_response = requests.get(f"{API_BASE}/users/me", headers=get_headers())
-                        if user_response.status_code == 200:
-                            st.session_state.user = user_response.json()
-                            st.rerun()
-                        else:
-                            st.error("Failed to fetch user info.")
-                    else:
-                        st.error("Invalid email/username or password!")
-                except Exception as e:
-                    st.error(f"Login error: {str(e)}")
+        if st.button("Login"):
+            res = requests.post(
+                f"{API_BASE}/token",
+                data={"username": email, "password": password},
+            )
+            if res.status_code == 200:
+                st.session_state.token = res.json()["access_token"]
+                st.session_state.page = "predict"
+                st.rerun()
             else:
-                st.warning("Please enter email/username and password.")
+                st.error("Invalid credentials")
 
     with col2:
-        if st.button("Sign Up", type="secondary", use_container_width=True):
-            if identifier and password:
-                signup_data = {"email": identifier, "password": password}
-                try:
-                    response = requests.post(f"{API_BASE}/auth/register", json=signup_data)
-                    if response.status_code == 201:
-                        st.success("Account created! Now click Login.")
-                    else:
-                        error_detail = response.json().get("detail", "Registration failed")
-                        st.error(f"Registration failed: {error_detail}")
-                except Exception as e:
-                    st.error(f"Signup error: {str(e)}")
-            else:
-                st.warning("Please enter email and password.")
+        if st.button("Sign Up"):
+            st.session_state.page = "signup"
+            st.rerun()
 
-# Show login/signup if not authenticated
-if "token" not in st.session_state:
-    login_page()
-else:
-    # Logged in: show predictor + logout
-    st.markdown(f"**Welcome, {st.session_state.user.get('username', 'User')}**")
-    if st.button("Logout"):
-        for key in ["token", "user"]:
-            st.session_state.pop(key, None)
+# ---------------------------
+# SIGNUP PAGE
+# ---------------------------
+def signup_page():
+    st.title("Create Account")
+
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
+
+    if st.button("Create Account"):
+        res = requests.post(
+            f"{API_BASE}/auth/register",
+            json={"email": email, "password": password},
+        )
+
+        if res.status_code == 201:
+            st.success("Account created successfully!")
+            st.info("Now login using your email and password.")
+            st.session_state.page = "login"
+            st.rerun()
+        else:
+            st.error(res.text)
+
+    if st.button("Back to Login"):
+        st.session_state.page = "login"
         st.rerun()
 
-    # Predictor form
-    st.markdown("Enter your details below:")
-    age = st.number_input("Age", min_value=1, max_value=119, value=30)
-    gender = st.selectbox("Gender", options=["male", "female"])
-    weight = st.number_input("Weight (kg)", min_value=1.0, value=65.0)
-    height = st.number_input("Height (m)", min_value=0.5, max_value=2.5, value=1.7, step=0.01)
-    income_lpa = st.number_input("Annual Income (LPA)", min_value=0.1, value=10.0)
-    smoker = st.selectbox("Are you a smoker?", options=[True, False], format_func=lambda x: "Yes" if x else "No")
-    condition = st.selectbox("Pre-existing Medical Condition", options=["none", "diabetes", "hypertension", "heart_disease"])
-    region = st.text_input("Region", value="Dar es Salaam").strip().title()
-    area = st.text_input("Area", value="Mbagala").strip().title()
-    occupation = st.selectbox(
-        "Occupation",
-        options=["retired", "freelancer", "student", "government_job", "business_owner", "unemployed", "private_job"]
-    )
+# ---------------------------
+# PREDICTION PAGE
+# ---------------------------
+def predictor_page():
+    st.success("Logged in successfully")
 
-    if st.button("Predict Premium Category"):
-        if not region or not area:
-            st.warning("Please enter a valid region and area.")
+    if st.button("Logout"):
+        st.session_state.clear()
+        st.session_state.page = "login"
+        st.rerun()
+
+    age = st.number_input("Age", 1, 119, 30)
+    height = st.number_input("Height (m)", 0.5, 2.5, 1.7)
+    weight = st.number_input("Weight (kg)", 1.0, 200.0, 65.0)
+    smoker = st.checkbox("Smoker")
+
+    if st.button("Predict"):
+        payload = {
+            "age": age,
+            "gender": "male",
+            "height_cm": height * 100,
+            "weight_kg": weight,
+            "income_lpa": 10,
+            "smoker": smoker,
+            "condition": "none",
+            "region": "Dar es Salaam",
+            "area": "Mbagala",
+            "occupation": "private_job",
+        }
+
+        res = requests.post(
+            f"{API_BASE}/predict",
+            json=payload,
+            headers=auth_headers(),
+        )
+
+        if res.status_code == 200:
+            st.success(f"Premium Category: {res.json()['premium_category']}")
         else:
-            input_data = {
-                "age": age,
-                "gender": gender,
-                "height_cm": int(height * 100),
-                "weight_kg": weight,
-                "income_lpa": income_lpa,
-                "smoker": smoker,
-                "condition": condition,
-                "region": region,
-                "area": area,
-                "occupation": occupation
-            }
-            try:
-                response = requests.post(API_URL, json=input_data, headers=get_headers(), timeout=10)
-                response.raise_for_status()
-                result = response.json()
-                premium_keys = ["premium_category", "prediction", "premium", "category", "predicted_category"]
-                premium = next((result.get(key) for key in premium_keys if key in result), None)
-                if premium:
-                    st.success(f"**Predicted Premium Category: {premium}**")
-                    if "confidence" in result:
-                        st.info(f"Confidence: {result['confidence']:.2f}")
-                    if "class_probabilities" in result:
-                        st.write("Class Probabilities:")
-                        st.json(result["class_probabilities"])
-                else:
-                    st.error("API response did not include a premium category.")
-                with st.expander("Full API Response (debug)"):
-                    st.json(result)
-            except requests.exceptions.HTTPError as e:
-                st.error(f"API Error: {e.response.status_code} - {e.response.text}")
-            except requests.exceptions.ConnectionError:
-                st.error("Could not connect to the server. Is it running?")
-            except Exception as e:
-                st.error(f"Unexpected error: {str(e)}")
+            st.error(res.text)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# ---------------------------
+# ROUTER
+# ---------------------------
+if st.session_state.page == "login":
+    login_page()
+elif st.session_state.page == "signup":
+    signup_page()
+elif st.session_state.page == "predict":
+    predictor_page()
 
 
 
