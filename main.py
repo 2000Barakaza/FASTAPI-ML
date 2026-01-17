@@ -274,7 +274,7 @@ def get_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="",  # Add your password here
+        password="secret",  # Add your password here
         database="fastapi_ml"
     )
 
@@ -617,13 +617,14 @@ def sort_patients(
             key=lambda x: (x['weight_kg'] / ((x['height_cm'] / 100) ** 2)) if x['height_cm'] > 0 else 0,
             reverse=(order == 'desc')
         )
-    else:
         sorted_data = sorted(
             data,
             key=lambda x: x.get(sort_by, 0),
             reverse=(order == 'desc')
         )
     return [Patient(**p).model_dump() for p in sorted_data]
+
+
 
 # ... (other endpoints like /create, /edit, /delete, /predict are fine as-is, since they don't mix =Query/Path with non-defaults)
     valid_fields = ['height_cm', 'weight_kg', 'bmi']
@@ -646,6 +647,9 @@ def sort_patients(
             reverse=(order == 'desc')
         )
     return [Patient(**p).model_dump() for p in sorted_data]
+
+
+
 
 @app.post('/create')
 def create_patient(
@@ -710,6 +714,7 @@ def predict(
         "bmi": round(bmi, 2),
         "input_received": data.model_dump()
     }
+
 
 
 
