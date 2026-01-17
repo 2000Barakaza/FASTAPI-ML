@@ -144,23 +144,48 @@ def predictor_page():
         st.session_state.page = "login"
         st.rerun()
 
+    st.subheader("Enter Your Details")
+
     age = st.number_input("Age", 1, 119, 30)
     height = st.number_input("Height (m)", 0.5, 2.5, 1.7)
     weight = st.number_input("Weight (kg)", 1.0, 200.0, 65.0)
-    smoker = st.checkbox("Smoker")
+    income_lpa = st.number_input("Annual Income (LPA)", 0.1, 100.0, 10.0)
 
-    if st.button("Predict"):
+    smoker = st.selectbox("Are you a smoker?", [True, False])
+
+    condition = st.selectbox(
+        "Existing Condition",
+        ["none", "diabetes", "heart_disease", "asthma"]
+    )
+
+    region = st.text_input("Region", "Dar es Salaam")
+    area = st.text_input("Area", "Mbagala")
+
+    occupation = st.selectbox(
+        "Occupation",
+        [
+            "private_job",
+            "government_job",
+            "business_owner",
+            "freelancer",
+            "student",
+            "retired",
+            "unemployed",
+        ],
+    )
+
+    if st.button("Predict Premium"):
         payload = {
             "age": age,
-            "gender": "male",
-            "height_cm": height * 100,
+            "gender": "male",  # can make this a selectbox later
+            "height_cm": int(height * 100),
             "weight_kg": weight,
-            "income_lpa": 10,
+            "income_lpa": income_lpa,
             "smoker": smoker,
-            "condition": "none",
-            "region": "Dar es Salaam",
-            "area": "Mbagala",
-            "occupation": "private_job",
+            "condition": condition,
+            "region": region,
+            "area": area,
+            "occupation": occupation,
         }
 
         res = requests.post(
@@ -170,19 +195,13 @@ def predictor_page():
         )
 
         if res.status_code == 200:
-            st.success(f"Premium Category: {res.json()['premium_category']}")
+            st.success(
+                f"Predicted Premium Category: **{res.json()['premium_category']}**"
+            )
         else:
             st.error(res.text)
 
-# ---------------------------
-# ROUTER
-# ---------------------------
-if st.session_state.page == "login":
-    login_page()
-elif st.session_state.page == "signup":
-    signup_page()
-elif st.session_state.page == "predict":
-    predictor_page()
+
 
 
 
