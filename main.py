@@ -627,33 +627,6 @@ def sort_patients(
         )
     return [Patient(**p).model_dump() for p in sorted_data]
 
-
-
-# ... (other endpoints like /create, /edit, /delete, /predict are fine as-is, since they don't mix =Query/Path with non-defaults)
-    valid_fields = ['height_cm', 'weight_kg', 'bmi']
-    if sort_by not in valid_fields:
-        raise HTTPException(status_code=400, detail=f'Invalid field select from {valid_fields}')
-    if order not in ['asc', 'desc']:
-        raise HTTPException(status_code=400, detail='Invalid order select between asc and desc')
-    data = get_patients()
-    # For bmi, compute it manually for sorting (since it's computed)
-    if sort_by == 'bmi':
-        sorted_data = sorted(
-            data,
-            key=lambda x: (x['weight_kg'] / ((x['height_cm'] / 100) ** 2)) if x['height_cm'] > 0 else 0,
-            reverse=(order == 'desc')
-        )
-    else:
-        sorted_data = sorted(
-            data,
-            key=lambda x: x.get(sort_by, 0),
-            reverse=(order == 'desc')
-        )
-    return [Patient(**p).model_dump() for p in sorted_data]
-
-
-
-
 @app.post('/create')
 def create_patient(
     patient: Patient,
