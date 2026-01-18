@@ -8,38 +8,40 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: "@2000B1r1k1d1"
+          MYSQL_DATABASE: insurance_db
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
     strategy:
       matrix:
-        python-version: ["3.12"]  # Bumped to 3.12 for compatibility with modern deps like charset-normalizer 3.4.4
-
+        python-version: ["3.12"]
     env:
-      MODE: ${{ secrets.MODE }}  # Fixed: added space after colon
- ##  secrete.MOE
-
-
+      DB_URL: mysql+pymysql://root:%402000B1r1k1d1@127.0.0.1:3307/insurance_db
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      EMAIL_API_KEY: ${{ secrets.EMAIL_API_KEY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
       - name: Run tests
-        run: python ./main.py  # Updated back to main_test.py (adjust if main.py is correct for your tests)
-
-        
-
-
-
+        run: pytest
 
 
 
