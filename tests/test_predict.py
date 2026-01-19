@@ -8,7 +8,8 @@ def test_root():
     assert res.status_code == 200
     assert res.json()["message"] == "Insurance Premium Prediction API"
 
-def test_predict_no_auth_needed():
+def test_predict_requires_auth():
+    # Test without token – expect 401 Unauthorized
     res = client.post("/predict", json={
         "age": 30,
         "gender": "male",
@@ -21,12 +22,9 @@ def test_predict_no_auth_needed():
         "area": "Mbagala",
         "occupation": "private_job"
     })
-    assert res.status_code == 200  # No auth in app, so expect success
-    data = res.json()
-    assert "predicted_category" in data  # Matches your app's response key
-    assert "confidence" in data
-    assert "class_probabilities" in data
-
+    assert res.status_code == 401  # Expect failure without auth
+    assert "detail" in res.json()
+    assert res.json()["detail"] == "Not authenticated"  # Or your custom message
 
 
 
