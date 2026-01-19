@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from app.app import app  # Change to 'from app import app' if file is app.py
+from app.app import app  # Assuming this is correct based on your structure
 
 client = TestClient(app)
 
@@ -8,7 +8,7 @@ def test_root():
     assert res.status_code == 200
     assert res.json()["message"] == "Insurance Premium Prediction API"
 
-def test_predict_requires_auth():
+def test_predict_no_auth_needed():
     res = client.post("/predict", json={
         "age": 30,
         "gender": "male",
@@ -23,11 +23,9 @@ def test_predict_requires_auth():
     })
     assert res.status_code == 200  # No auth in app, so expect success
     data = res.json()
-    assert "premium_category" in data
-    assert "bmi" in data
-    assert "input_received" in data
-####clones
-
+    assert "predicted_category" in data  # Matches your app's response key
+    assert "confidence" in data
+    assert "class_probabilities" in data
 
 
 
