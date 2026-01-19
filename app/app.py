@@ -11,7 +11,7 @@ import pandas as pd
 # =========================
 # App initialization
 # =========================
-app = FastAPI(title="Insurance Premium Prediction API")
+app = FastAPI(title="Insurance Premium Predictor API")
 
 # =========================
 # Pydantic Model
