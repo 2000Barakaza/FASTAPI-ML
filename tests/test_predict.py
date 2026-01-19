@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from app import app  # Change to 'from app import app' if file is app.py
+from app.main import app  # Change to 'from app import app' if file is app.py
 
 client = TestClient(app)
 
