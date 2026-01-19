@@ -40,12 +40,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest httpx 
- # Install pytest explicitly
+          pip install pytest pytest-httpx  # Install pytest and httpx for FastAPI testing
       - name: Run tests
-        run: pytest
-
-
+        run: pytest -v  # Run with verbose for better output
 
 
 
