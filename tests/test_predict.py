@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from app.app import app  # Change to 'from app import app' if file is app.py
+from app import app  # Change to 'from app import app' if file is app.py
 
 client = TestClient(app)
 
@@ -27,4 +27,14 @@ def test_predict_requires_auth():
     assert "bmi" in data
     assert "input_received" in data
 ####clones
+
+
+
+
+
+
+
+
+
+
 
