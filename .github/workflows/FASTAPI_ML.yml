@@ -42,10 +42,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-httpx  # Install pytest and httpx for FastAPI testing
       - name: Run tests
-        run: pytest -v --import-mode=importlib  # Run with verbose for better output
-
-
-
+        run: PYTHONPATH=. pytest -v --import-mode=importlib
 
 
 
