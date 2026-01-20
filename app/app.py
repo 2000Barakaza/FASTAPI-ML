@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import Annotated, Literal
@@ -7,6 +7,20 @@ from model.predict import predict_output, MODEL_VERSION, model
 import os
 import pickle
 import pandas as pd
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+# Simple bearer token auth setup
+security = HTTPBearer()
+
+def require_auth(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    token = credentials.credentials
+    if token != "test-token":  # simple example
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing token"
+        )
 
 # =========================
 # App initialization
@@ -41,15 +55,18 @@ class Patient(BaseModel):
         ],
         Field(description="Occupation"),
     ]
+
     # ======================
     # Validators
     # ======================
     @field_validator("region")
     def normalize_region(cls, v: str) -> str:
         return v.strip().title()
+
     @field_validator("area")
     def normalize_area(cls, v: str) -> str:
         return v.strip().title()
+
     # ======================
     # Computed fields
     # ======================
@@ -58,6 +75,7 @@ class Patient(BaseModel):
     def bmi(self) -> float:
         height_m = self.height_cm / 100
         return round(self.weight_kg / (height_m ** 2), 2)
+
     @computed_field
     @property
     def lifestyle_risk(self) -> str:
@@ -66,6 +84,7 @@ class Patient(BaseModel):
         elif self.smoker or self.bmi > 27:
             return "medium"
         return "low"
+
     @computed_field
     @property
     def age_group(self) -> str:
@@ -76,6 +95,7 @@ class Patient(BaseModel):
         elif self.age < 60:
             return "middle_aged"
         return "senior"
+
     @computed_field
     @property
     def region_tier(self) -> int:
@@ -108,16 +128,19 @@ def health_check():
     }
 
 @app.post("/predict", response_model=PredictionResponse)
-def predict_premium(data: Patient):
+def predict_premium(
+    data: Patient,
+    _: str = Depends(require_auth)  # 🔐 enforce auth
+):
     user_input = {
         # engineered features
         "bmi": data.bmi,
         "age_group": data.age_group,
         "lifestyle_risk": data.lifestyle_risk,
         # map API fields to old model columns
-        "region": data.region,        # was region
-        "region_tier": data.region_tier, # was region_tier
-        "area": data.area,         # was area
+        "region": data.region,  # was region
+        "region_tier": data.region_tier,  # was region_tier
+        "area": data.area,  # was area
         "income_lpa": data.income_lpa,
         "occupation": data.occupation,
         # raw features
@@ -131,11 +154,6 @@ def predict_premium(data: Patient):
         return predict_output(user_input)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
-
 
 
 
