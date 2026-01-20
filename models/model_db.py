@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean
 from database import Base
+from pydantic import BaseModel
 
 class DBUser(Base):
     __tablename__ = "users"
@@ -10,7 +11,8 @@ class DBUser(Base):
     hashed_password = Column(String(255))
     full_name = Column(String(100), nullable=True)
     disabled = Column(Boolean, default=False)
-
+def __repr__(self):
+        return f"<DBUser(id={self.id}, username='{self.username}', email='{self.email}')>"
 
 
 class Patient(Base):
@@ -29,8 +31,19 @@ class Patient(Base):
     occupation = Column(String(50))
     user_id = Column(Integer)  # Link to user if needed
 
-
-
-
-
     
+from pydantic import BaseModel
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    email: str
+
+    class Config:
+        orm_mode = True  # Use this for Pydantic v1; for v2, change to model_config = {"from_attributes": True}
+
+
+
+
+
+

@@ -227,16 +227,19 @@
 
 
 # main.py
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends,HTTPException,status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import Annotated
+from models.model_db import UserOut
 import os
 from dotenv import load_dotenv
 # SQLAlchemy imports
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
+from datetime import datetime, timedelta
 from database import engine, get_db, Base
 from config.region_tier import areas, regions  # Assuming you have this file
 from email_service import send_email
@@ -276,11 +279,29 @@ def root():
 def about():
     return {"message": "Predict insurance premium categories"}
 
-@app.post("/token")
+@app.post(
+    "/token",
+    response_model=Token,
+    responses={
+        status.HTTP_200_OK: {"description": "Successful authentication"},
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Authentication failed",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Incorrect username/email or password"}
+                }
+            },
+        },
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "description": "Validation error (e.g., invalid grant_type)"
+        },
+    },
+)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ) -> Token:
+
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect username/email or password")
@@ -293,11 +314,27 @@ async def login_for_access_token(
     )
     return Token(access_token=access_token, token_type="bearer")
 
-@app.post("/auth/register")
+@app.post(
+    "/auth/register",
+    response_model=RegisterInput,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_201_CREATED: {"description": "User registered successfully"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Email or username already registered",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Email or username already registered"}
+                }
+            },
+        },
+    },
+)
 def register(
     register_input: RegisterInput,
     db: Session = Depends(get_db)
 ):
+    
     # Normalize email
     email = register_input.email.strip().lower()
     
@@ -328,6 +365,13 @@ def register(
 @app.get("/users/me/", response_model=User)
 async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
     return current_user
+
+
+# Added: New endpoint to list all users
+@app.get("/users", response_model=list[UserOut])
+def get_users(db: Session = Depends(get_db)):
+    return db.query(DBUser).all()
+
 
 class PredictionInput(BaseModel):
     age: int
