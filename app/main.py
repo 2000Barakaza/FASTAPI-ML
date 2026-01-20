@@ -232,6 +232,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
+from typing import Annotated
 import os
 from dotenv import load_dotenv
 # SQLAlchemy imports
@@ -239,7 +240,7 @@ from sqlalchemy.orm import Session
 from database import engine, get_db, Base
 from config.region_tier import areas, regions  # Assuming you have this file
 from email_service import send_email
-from auth import (  # Import only necessary items
+from app.auth import (  # Import only necessary items
     Token, User, RegisterInput,
     oauth2_scheme,
     get_current_user, get_current_active_user,
