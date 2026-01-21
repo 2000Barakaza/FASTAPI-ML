@@ -1,8 +1,10 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean
+from fastapi_users.db import SQLAlchemyBaseUserTable
 from database import Base
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
-class DBUser(Base):
+
+class DBUser(SQLAlchemyBaseUserTable[int], Base):  # Use int for ID (matches your setup)
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -11,6 +13,10 @@ class DBUser(Base):
     hashed_password = Column(String(255))
     full_name = Column(String(100), nullable=True)
     disabled = Column(Boolean, default=False)
+    is_verified = Column(Boolean, default=False)  # New for verification
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
+
 def __repr__(self):
         return f"<DBUser(id={self.id}, username='{self.username}', email='{self.email}')>"
 
@@ -31,8 +37,7 @@ class Patient(Base):
     occupation = Column(String(50))
     user_id = Column(Integer)  # Link to user if needed
 
-    
-from pydantic import BaseModel
+
 
 class UserOut(BaseModel):
     id: int
@@ -40,7 +45,14 @@ class UserOut(BaseModel):
     email: str
 
     class Config:
-        orm_mode = True  # Use this for Pydantic v1; for v2, change to model_config = {"from_attributes": True}
+        #orm_mode = True  # Use this for Pydantic v1; for v2, change to model_config = {"from_attributes": True}
+        model_config = ConfigDict(from_attributes=True)
+
+
+
+
+
+
 
 
 
