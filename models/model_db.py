@@ -10,7 +10,7 @@ class DBUser(Base):
     email = Column(String(100), unique=True, index=True)
     hashed_password = Column(String(255))
     full_name = Column(String(100), nullable=True)
-    disabled = Column(Boolean, default=False)
+    #disabled = Column(Boolean, default=False)
 def __repr__(self):
         return f"<DBUser(id={self.id}, username='{self.username}', email='{self.email}')>"
 
