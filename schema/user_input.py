@@ -78,6 +78,15 @@ class UserInput(BaseModel):
             return 2
         return 3
 
+from pydantic import BaseModel, EmailStr
+
+class UserRead(BaseModel):
+    id: int
+    email: EmailStr
+    is_active: bool
+
+    class Config:
+        from_attributes = True  # 👈 Pydantic v2 (orm_mode in v1)
 
 
 
