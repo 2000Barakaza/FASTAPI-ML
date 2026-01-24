@@ -13,7 +13,7 @@ from fastapi import Request
 #from fastapi_users.router import BaseUserManager
 from fastapi_users.manager import BaseUserManager
 from fastapi_users import models
-from models.model_db import DBUser
+from models.model_db import DBUser, EmailVerification   
 import os
 from dotenv import load_dotenv
 
@@ -54,6 +54,16 @@ class UserRead(BaseModel):
     disabled: bool
     model_config = {"from_attributes": True}
 
+
+class UserInDB(BaseModel):
+    id: int
+    username: str
+    email: EmailStr
+    disabled: bool = False
+    model_config = {"from_attributes": True} # Handles ORM-to-dict conversion
+class RegisterInput(BaseModel):
+    email: str
+    password: str = Field(min_length=8)
 
 
 from typing import Generic, TypeVar

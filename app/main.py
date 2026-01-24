@@ -226,6 +226,10 @@
 #    }
 
 
+
+
+
+
 # main.py (updated: token creation now includes sub, no other changes)
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -243,17 +247,17 @@ from sqlalchemy import or_
 from datetime import datetime, timedelta
 from database import engine, get_db, Base
 from config.region_tier import areas, regions # Assuming you have this file
-from email_service import send_email
+from email_service import send_email 
 from models.model_db import RegisterInput
 from app.auth import ( # Import only necessary items
-    Token, User,
+    Token, User,RegisterInput,
     oauth2_scheme,
     get_current_user, get_current_active_user, get_current_admin,
     authenticate_user, create_access_token,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     get_password_hash,verify_password
 )
-from models.model_db import DBUser, Subscription, Prediction # NEW: Import Subscription, Prediction
+from models.model_db import DBUser, Subscription, Prediction, EmailVerification  # NEW: Import Subscription, Prediction
 from uuid import uuid4
 load_dotenv()
 app = FastAPI(title=os.getenv("APP_TITLE", "Insurance Premium Predictor API"))
@@ -298,6 +302,9 @@ async def login_for_access_token(
     db: Session = Depends(get_db)
 ) -> Token:
     user = authenticate_user(form_data.username, form_data.password, db)
+    
+    if user == "not_verified":
+      raise HTTPException(status_code=401, detail="Email not verified. Check your inbox.")
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect username/email or password")
     access_token = create_access_token(
@@ -354,7 +361,45 @@ def register(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    verification_token = uuid4().hex
+    expires_at = datetime.utcnow() + timedelta(hours=24)
+    verification = EmailVerification(
+        user_id=new_user.id,
+        token=verification_token,
+        expires_at=expires_at
+    )
+    db.add(verification)
+    db.commit()
+    db.refresh(verification)
+    verification_link = f"{os.getenv('APP_URL')}/auth/verify-email?token={verification_token}"
+    send_email(
+        to_email=new_user.email,
+        subject="Verify your email",
+        html_content=f"""
+            <h3>Welcome!</h3>
+            <p>Click the link below to verify your email:</p>
+            <a href="{verification_link}">Verify Email</a>
+            <p>This link expires in 24 hours.</p>
+        """
+    )
     return JSONResponse(status_code=201, content={"message": "User registered successfully"})
+
+@app.get("/auth/verify-email")
+def verify_email(token: str, db: Session = Depends(get_db)):
+    verification = db.query(EmailVerification).filter(
+        EmailVerification.token == token,
+        EmailVerification.used == False
+    ).first()
+    if not verification:
+        raise HTTPException(400, "Invalid or expired token")
+    if verification.expires_at < datetime.utcnow():
+        raise HTTPException(400, "Token expired")
+    user = db.query(DBUser).filter(DBUser.id == verification.user_id).first()
+    user.is_verified = True
+    verification.used = True
+    db.commit()
+    return {"message": "Email verified successfully"}
+
 @app.get("/users/me/", response_model=UserRead)
 async def read_users_me(current_user: Annotated[DBUser, Depends(get_current_active_user)]):
     return current_user

@@ -27,6 +27,17 @@ class DBUser(Base):
         return f"<DBUser id={self.id} username={self.username}>"
 
 
+
+class EmailVerification(Base):
+    __tablename__ = "email_verification"
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    token: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
@@ -75,7 +86,6 @@ class Patient(Base):
         nullable=True,
     )
 
-
 # =========================
 # Pydantic Schemas
 # =========================
@@ -94,7 +104,6 @@ class UserOut(BaseModel):
     role: str
 
     model_config = {"from_attributes": True}
-
 
 class SubscriptionOut(BaseModel):
     id: int
@@ -127,4 +136,3 @@ class PredictionOut(BaseModel):
 
 
 
-    
