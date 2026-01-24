@@ -27,7 +27,7 @@ jobs:
     env:
       DB_URL: mysql+pymysql://root:%402000B1r1k1d1@127.0.0.1:3307/insurance_db
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      EMAIL_API_KEY: ${{ secrets.EMAIL_API_KEY }}
+      EMAIL_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -49,4 +49,5 @@ jobs:
 
 
 
+        
 

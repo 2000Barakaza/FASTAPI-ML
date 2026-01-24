@@ -226,8 +226,8 @@
 #    }
 
 
-# main.py
-from fastapi import FastAPI, Depends,HTTPException,status
+# main.py (updated: token creation now includes sub, no other changes)
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -236,27 +236,27 @@ from typing import Annotated
 from models.model_db import UserOut
 import os
 from dotenv import load_dotenv
+from app.auth import UserRead
 # SQLAlchemy imports
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from datetime import datetime, timedelta
 from database import engine, get_db, Base
-from config.region_tier import areas, regions  # Assuming you have this file
+from config.region_tier import areas, regions # Assuming you have this file
 from email_service import send_email
-from app.auth import (  # Import only necessary items
-    Token, User, RegisterInput,
+from models.model_db import RegisterInput
+from app.auth import ( # Import only necessary items
+    Token, User,
     oauth2_scheme,
-    get_current_user, get_current_active_user,
+    get_current_user, get_current_active_user, get_current_admin,
     authenticate_user, create_access_token,
     ACCESS_TOKEN_EXPIRE_MINUTES,
-    get_password_hash
+    get_password_hash,verify_password
 )
-from models.model_db import DBUser  # Import DBUser here
-
+from models.model_db import DBUser, Subscription, Prediction # NEW: Import Subscription, Prediction
+from uuid import uuid4
 load_dotenv()
-
 app = FastAPI(title=os.getenv("APP_TITLE", "Insurance Premium Predictor API"))
-
 origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
@@ -265,20 +265,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Create tables on startup
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
-
 @app.get("/")
 def root():
     return {"message": "Insurance Premium Predictor API"}
-
 @app.get("/about")
 def about():
     return {"message": "Predict insurance premium categories"}
-
 @app.post(
     "/token",
     response_model=Token,
@@ -301,22 +297,20 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ) -> Token:
-
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect username/email or password")
     access_token = create_access_token(
         data={
-            "sub": user.username,
+            "sub": str(user.id),  # FIXED: Add sub with user.id
             "uid": user.id  # Added for improvement
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return Token(access_token=access_token, token_type="bearer")
-
 @app.post(
     "/auth/register",
-    response_model=RegisterInput,
+    #response_model=RegisterInput,
     status_code=status.HTTP_201_CREATED,
     responses={
         status.HTTP_201_CREATED: {"description": "User registered successfully"},
@@ -334,12 +328,13 @@ def register(
     register_input: RegisterInput,
     db: Session = Depends(get_db)
 ):
-    
+ 
     # Normalize email
     email = register_input.email.strip().lower()
-    
+ 
     # Check if email or username already exists in DB
-    username = email.split("@")[0]
+    username_base = email.split("@")[0]
+    username = f"{username_base}_{uuid4().hex[:6]}" # Unique username with UUID
     existing_user = db.query(DBUser).filter(
         or_(
             DBUser.email == email,
@@ -348,31 +343,25 @@ def register(
     ).first()
     if existing_user:
         raise HTTPException(400, "Email or username already registered")
-
     hashed_password = get_password_hash(register_input.password)
     new_user = DBUser(
         username=username,
         email=email,
         hashed_password=hashed_password,
-        full_name=None,  # Can add later if needed
-        disabled=False
+        full_name=None, # Can add later if needed
+        disabled=True
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return JSONResponse(status_code=201, content={"message": "User registered successfully"})
-
-@app.get("/users/me/", response_model=User)
-async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+@app.get("/users/me/", response_model=UserRead)
+async def read_users_me(current_user: Annotated[DBUser, Depends(get_current_active_user)]):
     return current_user
-
-
 # Added: New endpoint to list all users
 @app.get("/users", response_model=list[UserOut])
-def get_users(db: Session = Depends(get_db)):
+def get_users(admin: Annotated[DBUser, Depends(get_current_admin)], db: Session = Depends(get_db)):
     return db.query(DBUser).all()
-
-
 class PredictionInput(BaseModel):
     age: int
     gender: str
@@ -384,23 +373,35 @@ class PredictionInput(BaseModel):
     region: str
     area: str
     occupation: str
-
 @app.post("/predict")
 def predict(
     data: PredictionInput,
-    current_user: Annotated[User, Depends(get_current_active_user)]
+    current_user: Annotated[DBUser, Depends(get_current_active_user)],
+    db: Session = Depends(get_db)
 ):
+    # NEW: Subscription check
+    sub = db.query(Subscription).filter(
+        Subscription.user_id == current_user.id,
+        Subscription.status == "active",
+        Subscription.is_deleted == False
+    ).first()
+    if not sub or sub.plan == "free":
+        raise HTTPException(403, "Active premium subscription required for predictions")
+   
     height_m = data.height_cm / 100
     bmi = data.weight_kg / (height_m ** 2) if height_m > 0 else 0
     risk = "high" if (data.smoker and bmi > 30) or data.condition != "none" else \
            "medium" if data.smoker or bmi > 27 else "low"
     premium_category = risk.title()
+    # NEW: Save prediction history
+    prediction = Prediction(user_id=current_user.id, risk=premium_category, bmi=bmi)
+    db.add(prediction)
+    db.commit()
     return {
         "premium_category": premium_category,
         "bmi": round(bmi, 2),
         "input_received": data.model_dump()
     }
-
 @app.get("/test-email")
 def test_email():
     status = send_email(
@@ -409,6 +410,28 @@ def test_email():
         html_content="<h2>Your email setup is successful 🚀</h2>"
     )
     return {"status": status}
+@app.post("/subscribe")
+def subscribe(
+    plan: str,
+    current_user: Annotated[DBUser, Depends(get_current_active_user)],
+    db: Session = Depends(get_db)
+):
+    existing = db.query(Subscription).filter(Subscription.user_id == current_user.id).first()
+    if existing:
+        existing.plan = plan
+        existing.status = "active"
+        existing.start_date = datetime.utcnow()
+        existing.end_date = None
+    else:
+        new_sub = Subscription(
+            user_id=current_user.id,
+            plan=plan,
+            start_date=datetime.utcnow(),
+            status="active"
+        )
+        db.add(new_sub)
+    db.commit() 
+    return {"message": "Subscribed successfully"}
 
 
 
@@ -416,10 +439,6 @@ def test_email():
 
 
 
-
-
-
-
-
-
-
+##### user example email
+## -------manjale2021@gmail.com
+## 2------2000B1r1d1

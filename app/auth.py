@@ -1,10 +1,10 @@
-# auth.py
+# auth.py (fixed: added sub in token creation example, used db.get, updated tokenUrl)
 from datetime import datetime, timedelta, timezone
 from typing import Annotated,Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -24,12 +24,11 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY is not set in .env – this is required for security!")
-
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")  # FIXED: Proper tokenUrl
 
 class Token(BaseModel):
     access_token: str
@@ -49,13 +48,11 @@ class User(BaseModel):
     is_verified: bool = False
 
 
-class UserInDB(User):
+class UserRead(BaseModel):
     id: int
-    hashed_password: str
-
-class RegisterInput(BaseModel):
-    email: str
-    password: str = Field(min_length=8)
+    email: EmailStr
+    disabled: bool
+    model_config = {"from_attributes": True}
 
 
 
@@ -161,24 +158,13 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-def get_user(identifier: str, db: Session):
-    # Query DB by username or email
-    user = db.query(DBUser).filter(DBUser.username == identifier).first()
-    if not user:
-        user = db.query(DBUser).filter(DBUser.email == identifier).first()
-    if user:
-        return UserInDB(
-            id=user.id,
-            username=user.username,
-            email=user.email,
-            full_name=user.full_name,
-            disabled=user.disabled,
-            hashed_password=user.hashed_password
-        )
-    return None
+def get_user_by_login(identifier: str, db: Session) -> DBUser | None:
+    return db.query(DBUser).filter(
+        or_(DBUser.username == identifier, DBUser.email == identifier)
+    ).first()
 
 def authenticate_user(identifier: str, password: str, db: Session):
-    user = get_user(identifier, db)
+    user = get_user_by_login(identifier, db)
     if not user or not verify_password(password, user.hashed_password):
         return False
     return user
@@ -189,7 +175,26 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
+def verify_email_token(token: str, db: Session) -> bool:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "verify":
+            return False
+        email: str = payload.get("sub")
+        if email is None:
+            return False
+        user = db.query(DBUser).filter(DBUser.email == email).first()
+        if not user:
+            return False
+        if not user.disabled:
+            return True # Already verified
+        user.disabled = False
+        db.commit()
+        return True
+    except JWTError:
+        return False
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)) -> DBUser:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -197,20 +202,28 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Se
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        user_id: str = payload.get("sub")
+        if user_id is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    user = get_user(username, db)
+    user = db.get(DBUser, int(user_id))  # FIXED: Use db.get
     if user is None:
         raise credentials_exception
     return user
 
-async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
+async def get_current_active_user(current_user: Annotated[DBUser, Depends(get_current_user)]):
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+# NEW: Admin dependency
+async def get_current_admin(current_user: Annotated[DBUser, Depends(get_current_active_user)]):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return current_user
+
+
 
 
 
