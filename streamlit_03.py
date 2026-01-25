@@ -26,6 +26,10 @@ if "subscription_status" not in st.session_state:
 if "subscription_plan" not in st.session_state:
     st.session_state.subscription_plan = "free"
 
+# Safety net: always refresh user info if token exists but role missing
+if st.session_state.token and st.session_state.role is None:
+    fetch_user_info()
+
 # ---------------------------
 # HELPERS
 # ---------------------------
@@ -40,12 +44,11 @@ def fetch_user_info():
         return None
     data = res.json()
     # Trust backend ONLY
-    st.session_state.role = data["role"].strip().lower()
+    st.session_state.role = data["role"]
     sub = data.get("subscription", {})
-    st.session_state.subscription_plan = sub.get("plan", "free").strip().lower()
+    st.session_state.subscription_plan = sub.get("plan", "free")
     st.session_state.subscription_status = sub.get("status", "free")
     return data
-
 
 def fetch_predictions():
     res = requests.get(f"{API_BASE}/predictions/me", headers=auth_headers())
@@ -64,14 +67,15 @@ def login_page():
             identifier = st.text_input("Email or Username")
         with col2:
             password = st.text_input("Password", type="password")
-        submit = st.form_submit_button("Login", width="stretch")
-       
-
+        submit = st.form_submit_button("Login", use_container_width=True)
     if submit:
         res = requests.post(f"{API_BASE}/token", data={"username": identifier, "password": password})
         if res.status_code == 200:
             st.session_state.token = res.json()["access_token"]
-            fetch_user_info() 
+            
+            # Load user info (role + subscription) IMMEDIATELY after token
+            fetch_user_info()
+            
             st.success("Logged in successfully!")
             st.rerun()
         else:
@@ -111,12 +115,20 @@ def verify_email_page():
 # ---------------------------
 def predictor_page():
     st.title("📊 Predict Insurance Premium")
-    if (
-        st.session_state.role != "admin"
-        and st.session_state.subscription_plan != "premium"
-    ):
+
+    # Force fetch latest user info at the start of the page if role missing
+    if st.session_state.token and st.session_state.role is None:
+        fetch_user_info()
+
+    # Admin bypass - check role FIRST
+    if st.session_state.role == "admin":
+        st.success("🛡️ Admin Access: Unlimited predictions")
+    elif st.session_state.subscription_plan == "premium":
+        st.success("💎 Premium Access: Unlimited predictions")
+    else:
         st.warning("🔒 You need an active premium subscription to predict.")
         st.stop()
+
     with st.form("predict_form"):
         st.subheader("👤 Personal Info")
         c1, c2, c3 = st.columns(3)
@@ -145,7 +157,7 @@ def predictor_page():
             region = st.text_input("Region", "Dar es Salaam")
         with c9:
             area = st.text_input("Area", "Mbagala")
-        submit = st.form_submit_button("🚀 Predict Premium", width="stretch")
+        submit = st.form_submit_button("🚀 Predict Premium", use_container_width=True)
     if submit:
         payload = {
             "age": age,
@@ -188,7 +200,7 @@ def subscription_page():
         st.write("**Premium** - Unlimited predictions + priority support")
     with col2:
         plan = st.selectbox("Choose Plan", ["free", "premium"])
-        if st.button("Upgrade / Change Plan", width="stretch"):
+        if st.button("Upgrade / Change Plan", use_container_width=True):
             with st.spinner("Processing..."):
                 res = requests.post(
                     f"{API_BASE}/subscriptions/upgrade",
@@ -197,7 +209,7 @@ def subscription_page():
                 )
             if res.status_code == 200:
                 st.success("Plan updated successfully!")
-                fetch_user_info()  # Refresh status
+                fetch_user_info() # Refresh status
                 st.rerun()
             else:
                 st.error("Failed to update plan")
@@ -211,8 +223,8 @@ def history_page():
     if predictions:
         df = pd.DataFrame(predictions)
         df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
-        df = df[["created_at", "premium_category", "bmi"]]  # Assuming 'risk' was 'premium_category'
-        st.dataframe(df, width="stretch")
+        df = df[["created_at", "premium_category", "bmi"]] # Assuming 'risk' was 'premium_category'
+        st.dataframe(df, use_container_width=True)
     else:
         st.info("No predictions yet. Make your first prediction!")
 
@@ -291,6 +303,11 @@ else:
         signup_page()
     elif selected_page == "Verify Email":
         verify_email_page()
+
+
+
+
+
 
 
 
