@@ -237,13 +237,14 @@ from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import Annotated
+from fastapi_users import db
 from models.model_db import UserOut
 import os
 from dotenv import load_dotenv
 from app.auth import UserRead
 # SQLAlchemy imports
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from datetime import datetime, timedelta
 from database import engine, get_db, Base
 from config.region_tier import areas, regions # Assuming you have this file
@@ -400,7 +401,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Email verified successfully"}
 
-@app.get("/users/me/", response_model=UserRead)
+@app.get("/users/me/", response_model=UserOut)
 async def read_users_me(current_user: Annotated[DBUser, Depends(get_current_active_user)]):
     return current_user
 # Added: New endpoint to list all users
@@ -447,6 +448,60 @@ def predict(
         "bmi": round(bmi, 2),
         "input_received": data.model_dump()
     }
+
+# NEW: User's prediction history
+@app.get("/predictions/me")
+def get_my_predictions(
+    current_user: Annotated[DBUser, Depends(get_current_active_user)],
+    db: Session = Depends(get_db)
+):
+    predictions = db.query(Prediction).filter(Prediction.user_id == current_user.id)\
+        .order_by(Prediction.created_at.desc()).all()
+    return [
+        {
+            "created_at": p.created_at.isoformat(),
+            "premium_category": p.risk,
+            "bmi": p.bmi
+        } for p in predictions
+    ]
+
+
+# NEW: Admin stats
+@app.get("/admin/stats")
+def admin_stats(
+    admin: Annotated[DBUser, Depends(get_current_admin)],
+    db: Session = Depends(get_db)
+):
+    total_users = db.query(DBUser).count()
+    active_users = db.query(DBUser).filter(~DBUser.disabled).count()
+    total_subscriptions = db.query(Subscription).filter(Subscription.is_deleted == False).count()
+    active_subscriptions = db.query(Subscription).filter(
+        Subscription.status == "active",
+        Subscription.is_deleted == False
+    ).count()
+    
+    return {
+        "total_users": total_users,
+        "active_users": active_users,
+        "subscriptions": total_subscriptions,
+        "active_subscriptions": active_subscriptions
+    }
+
+# NEW: Daily prediction counts for admin chart
+@app.get("/admin/predictions/daily")
+def daily_predictions(
+    admin: Annotated[DBUser, Depends(get_current_admin)],
+    db: Session = Depends(get_db)
+):
+    daily = db.query(
+        func.date(Prediction.created_at).label('date'),
+        func.count(Prediction.id).label('count')
+    ).group_by(func.date(Prediction.created_at))\
+     .order_by('date').all()
+    
+    return [{"date": d.date.strftime("%Y-%m-%d"), "count": d.count} for d in daily]
+
+
 @app.get("/test-email")
 def test_email():
     status = send_email(
@@ -455,6 +510,71 @@ def test_email():
         html_content="<h2>Your email setup is successful 🚀</h2>"
     )
     return {"status": status}
+
+
+# NEW: Subscription routes
+@app.get("/subscriptions/me")
+def get_my_subscription(current_user: Annotated[DBUser, Depends(get_current_active_user)], db: Session = Depends(get_db)):
+    sub = db.query(Subscription).filter(Subscription.user_id == current_user.id).first()
+    if not sub:
+        return {"plan": "free", "status": "free"}
+    return {
+        "plan": sub.plan,
+        "status": sub.status,
+        "start_date": sub.start_date.isoformat(),
+        "end_date": sub.end_date.isoformat() if sub.end_date else None
+    }
+
+class SubscriptionUpgrade(BaseModel):
+    plan: str
+
+@app.post("/subscriptions/upgrade")
+def upgrade_subscription(
+    request: SubscriptionUpgrade,
+    current_user: Annotated[DBUser, Depends(get_current_active_user)],
+    db: Session = Depends(get_db)
+):
+    if request.plan not in ["free", "premium"]:
+        raise HTTPException(400, "Invalid plan")
+
+    # FIXED: Filter out soft-deleted subscriptions
+    sub = db.query(Subscription).filter(
+        Subscription.user_id == current_user.id,
+        Subscription.is_deleted == False
+    ).first()
+
+    if sub:
+        # Update existing active subscription
+        sub.plan = request.plan
+        sub.status = "active" if request.plan == "premium" else "free"
+        sub.start_date = datetime.utcnow()
+        sub.end_date = datetime.utcnow() + timedelta(days=30) if request.plan == "premium" else None
+    else:
+        # Create new subscription (only if no active one exists)
+        sub = Subscription(
+            user_id=current_user.id,
+            plan=request.plan,
+            status="active" if request.plan == "premium" else "free",
+            start_date=datetime.utcnow(),
+            end_date=datetime.utcnow() + timedelta(days=30) if request.plan == "premium" else None,
+            is_deleted=False
+        )
+        db.add(sub)
+
+    db.commit()
+    db.refresh(sub)
+
+    # OPTIONAL: Debug print (remove in production)
+    print(f"UPGRADE SUCCESS: User {current_user.id} -> Plan: {sub.plan}, Status: {sub.status}")
+
+    return {
+        "plan": sub.plan,
+        "status": sub.status,
+        "start_date": sub.start_date.isoformat(),
+        "end_date": sub.end_date.isoformat() if sub.end_date else None
+    }
+
+
 @app.post("/subscribe")
 def subscribe(
     plan: str,
@@ -487,3 +607,19 @@ def subscribe(
 ##### user example email
 ## -------manjale2021@gmail.com
 ## 2------2000B1r1d1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
