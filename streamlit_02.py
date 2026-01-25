@@ -63,7 +63,9 @@ def login_page():
             identifier = st.text_input("Email or Username")
         with col2:
             password = st.text_input("Password", type="password")
-        submit = st.form_submit_button("Login", use_container_width=True)
+        submit = st.form_submit_button("Login", width="stretch")
+       
+
     if submit:
         res = requests.post(f"{API_BASE}/token", data={"username": identifier, "password": password})
         if res.status_code == 200:
@@ -141,7 +143,7 @@ def predictor_page():
             region = st.text_input("Region", "Dar es Salaam")
         with c9:
             area = st.text_input("Area", "Mbagala")
-        submit = st.form_submit_button("🚀 Predict Premium", use_container_width=True)
+        submit = st.form_submit_button("🚀 Predict Premium", width="stretch")
     if submit:
         payload = {
             "age": age,
@@ -184,7 +186,7 @@ def subscription_page():
         st.write("**Premium** - Unlimited predictions + priority support")
     with col2:
         plan = st.selectbox("Choose Plan", ["free", "premium"])
-        if st.button("Upgrade / Change Plan", use_container_width=True):
+        if st.button("Upgrade / Change Plan", width="stretch"):
             with st.spinner("Processing..."):
                 res = requests.post(
                     f"{API_BASE}/subscriptions/upgrade",
@@ -208,7 +210,7 @@ def history_page():
         df = pd.DataFrame(predictions)
         df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%Y-%m-%d %H:%M")
         df = df[["created_at", "premium_category", "bmi"]]  # Assuming 'risk' was 'premium_category'
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width="stretch")
     else:
         st.info("No predictions yet. Make your first prediction!")
 
@@ -291,4 +293,3 @@ else:
 
 
 
-        
