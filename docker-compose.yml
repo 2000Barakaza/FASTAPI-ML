@@ -1,0 +1,43 @@
+version: "3.9"
+services:
+  fastapi:
+    build: .
+    container_name: fastapi-ml
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      - APP_TITLE=Insurance Premium Predictor API # Example env var from your code; add more as needed
+      - ALLOWED_ORIGINS=http://172.232.112.57:8501,http://localhost:8501,* # CORS for Streamlit + local dev
+      - SECRET_KEY=${SECRET_KEY} # Load from .env file on server for security
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - APP_URL=http://172.232.112.57:8000 # For verification links; adjust for domain if you have one
+    env_file:
+      - .env # Load sensitive vars (SECRET_KEY, DB_URL, etc.) from .env file
+  streamlit:
+    image: python:3.11-slim
+    container_name: streamlit-ml
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt && streamlit run streamlit.py --server.address 0.0.0.0 --server.port 8501 --server.enableCORS false"
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+    depends_on:
+      - fastapi # Ensure FastAPI starts first
+networks:
+  default:
+    driver: bridge
+
+
+
+
+
+
+
+
+
+
