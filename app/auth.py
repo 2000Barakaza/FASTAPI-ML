@@ -1,20 +1,25 @@
 # auth.py (fixed: added sub in token creation example, used db.get, updated tokenUrl)
 from datetime import datetime, timedelta, timezone
-from typing import Annotated,Optional
+from typing import Annotated,Optional,  Generic, TypeVar
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from database import get_db
 from fastapi import Request
 #from fastapi_users.router import BaseUserManager
-from fastapi_users.manager import BaseUserManager
+from fastapi_users import BaseUserManager, UUIDIDMixin
+from fastapi_users.manager import UserManagerDependency
+from fastapi_users.exceptions import UserNotExists, UserAlreadyExists, InvalidPasswordException
+from fastapi import Request 
 from fastapi_users import models
+from email_service import send_email
 from models.model_db import DBUser, EmailVerification   
 import os
+import uuid 
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -36,7 +41,6 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: str | None = None
-
     
 class User(BaseModel):
     username: str
@@ -46,14 +50,13 @@ class User(BaseModel):
     is_superuser: bool = False
     is_active: bool = True
     is_verified: bool = False
-
+    model_config = ConfigDict(from_attributes=True)
 
 class UserRead(BaseModel):
     id: int
     email: EmailStr
     disabled: bool
     model_config = {"from_attributes": True}
-
 
 class UserInDB(BaseModel):
     id: int
@@ -65,15 +68,7 @@ class RegisterInput(BaseModel):
     email: str
     password: str = Field(min_length=8)
 
-
-from typing import Generic, TypeVar
-
-from pydantic import BaseModel, ConfigDict, EmailStr
-
-from fastapi_users import models
-
 SCHEMA = TypeVar("SCHEMA", bound=BaseModel)
-
 
 class CreateUpdateDictModel(BaseModel):
     def create_update_dict(self):
@@ -161,7 +156,6 @@ class UserManager(BaseUserManager[models.UP, DBUser]):
         send_email(to_email=user.email, subject="Verify Your Account", html_content=html_content)
         print(f"Verification email sent to {user.email}. Token: {token}")
 
-
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -232,7 +226,6 @@ async def get_current_admin(current_user: Annotated[DBUser, Depends(get_current_
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin privileges required")
     return current_user
-
 
 
 

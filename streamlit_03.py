@@ -10,7 +10,7 @@ st.set_page_config(
     layout="wide",
 )
 
-API_BASE = "http://127.0.0.1:8000"
+API_BASE = "http://172.232.112.57:8000"
 
 # ---------------------------
 # INIT PAGE STATE
